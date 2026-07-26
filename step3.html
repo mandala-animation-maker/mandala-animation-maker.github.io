@@ -3,39 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfect Sync Video Generator (ZIP + Audio)</title>
+    <title>Perfect Sync Video Generator</title>
     
     <!-- JSZip for extracting the ZIP file -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
-    <!-- FFmpeg.wasm for Browser Video Encoding -->
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-    <script src="https://unpkg.com/@ffmpeg/util@0.12.2/dist/umd/index.js"></script>
+    <!-- Swapped to jsDelivr CDN for better global reliability -->
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/umd/index.js"></script>
 
     <style>
         :root { --primary: #0ea5e9; --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --border: #cbd5e1; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
-        body { background: var(--bg); color: var(--text); padding: 30px; display: flex; justify-content: center; }
-        .container { background: var(--card); max-width: 650px; width: 100%; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); padding: 30px; }
-        h1 { text-align: center; margin-bottom: 5px; color: var(--primary); }
+        body { background: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
+        .container { background: var(--card); max-width: 650px; width: 100%; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); padding: 25px; }
+        h1 { text-align: center; margin-bottom: 5px; color: var(--primary); font-size: 1.5rem; }
         p.subtitle { text-align: center; font-size: 0.9rem; color: #64748b; margin-bottom: 25px; }
         
-        .input-group { background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border); }
-        label { display: block; font-weight: 600; margin-bottom: 8px; color: #334155; }
-        input[type="file"] { width: 100%; cursor: pointer; }
+        .input-group { background: #f1f5f9; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--border); }
+        label { display: block; font-weight: 600; margin-bottom: 5px; color: #334155; font-size: 0.95rem; }
+        input[type="file"] { width: 100%; cursor: pointer; font-size: 0.9rem; }
         
-        button { width: 100%; background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        button { width: 100%; background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 5px; transition: 0.2s; }
         button:hover { background: #0284c7; }
         button:disabled { background: #94a3b8; cursor: not-allowed; }
         
         .progress-bar { width: 100%; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; margin: 15px 0; }
         .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
-        #log { background: #1e293b; color: #38bdf8; padding: 10px; font-family: monospace; font-size: 0.8rem; border-radius: 6px; height: 150px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
+        #log { background: #1e293b; color: #38bdf8; padding: 10px; font-family: monospace; font-size: 0.75rem; border-radius: 6px; height: 120px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
         
-        .result-container { display: none; margin-top: 25px; border-top: 2px solid var(--border); padding-top: 20px; }
+        .result-container { display: none; margin-top: 20px; border-top: 2px solid var(--border); padding-top: 20px; }
         video { width: 100%; border-radius: 8px; background: #000; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .download-btn { display: block; text-align: center; background: #10b981; color: white; padding: 15px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: 0.2s; }
-        .download-btn:hover { background: #059669; }
+        
+        #mobileWarning { display: none; background: #fff3cd; color: #856404; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 0.85rem; border: 1px solid #ffeeba; }
     </style>
 </head>
 <body>
@@ -44,13 +45,17 @@
     <h1>Video Generator Pro</h1>
     <p class="subtitle">100% Sync • Custom Audio • ZIP Uploads</p>
 
+    <div id="mobileWarning">
+        ⚠️ <b>Mobile Device Detected:</b> Video generation uses massive amounts of RAM. If your browser crashes during generation, you must use a Computer.
+    </div>
+
     <div class="input-group">
         <label>1. Upload sequence.json</label>
         <input type="file" id="jsonInput" accept=".json">
     </div>
 
     <div class="input-group">
-        <label>2. Upload Audio Track (.wav or .mp3) [Optional]</label>
+        <label>2. Upload Audio (.wav or .mp3) [Optional]</label>
         <input type="file" id="audioInput" accept="audio/*">
     </div>
 
@@ -70,12 +75,18 @@
     <div class="result-container" id="resultContainer">
         <h3 style="margin-bottom: 10px; text-align: center;">Success! Your Video is Ready</h3>
         <video id="outputVideo" controls></video>
-        <a id="downloadBtn" class="download-btn" href="#" download="synced_output.mp4">Download HQ Video</a>
+        <a id="downloadBtn" class="download-btn" href="#" download="synced_output.mp4">Download MP4 Video</a>
     </div>
 </div>
 
 <script>
     document.addEventListener("DOMContentLoaded", () => {
+        
+        // Show Mobile Warning
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            document.getElementById('mobileWarning').style.display = 'block';
+        }
+
         let ffmpegInstance = null;
         
         function logMsg(msg) {
@@ -86,10 +97,15 @@
 
         async function initFFmpeg() {
             if (ffmpegInstance) return ffmpegInstance;
+            
+            // ERROR FIX 1: Safely check if the main library loaded at all
+            if (typeof window.FFmpegWASM === 'undefined') {
+                throw new Error("FFmpeg failed to load. Please check your internet connection.");
+            }
+            
             const { FFmpeg } = window.FFmpegWASM;
-            const { toBlobURL } = window.FFmpegUtil;
-
             const ffmpeg = new FFmpeg();
+            
             ffmpeg.on('log', ({ message }) => logMsg(message));
             ffmpeg.on('progress', ({ progress }) => {
                 let perc = Math.max(0, Math.min(100, progress * 100));
@@ -97,18 +113,26 @@
                 document.getElementById('statusText').innerText = `Encoding Engine Working... ${Math.round(perc)}%`;
             });
 
-            const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+            // ERROR FIX 2: Safely grab the Utility object (Accounting for naming differences)
+            const util = window.FFmpegUtil || window.ffmpegUtil || window.ffmpegutil;
             
-            try {
-                await ffmpeg.load({
-                    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-                    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
-                });
-            } catch (e) {
-                logMsg("Applying CORS fallback...");
-                await ffmpeg.load({ coreURL: `${baseURL}/ffmpeg-core.js`, wasmURL: `${baseURL}/ffmpeg-core.wasm` });
+            const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+            let coreURL = `${baseURL}/ffmpeg-core.js`;
+            let wasmURL = `${baseURL}/ffmpeg-core.wasm`;
+
+            // ERROR FIX 3: Failsafe bypass if toBlobURL is missing or errors out
+            if (util && typeof util.toBlobURL === 'function') {
+                try {
+                    coreURL = await util.toBlobURL(coreURL, 'text/javascript');
+                    wasmURL = await util.toBlobURL(wasmURL, 'application/wasm');
+                } catch (e) {
+                    logMsg("Blob generation skipped. Using direct URLs...");
+                }
+            } else {
+                logMsg("Utility bypass active. Using direct URLs...");
             }
 
+            await ffmpeg.load({ coreURL, wasmURL });
             ffmpegInstance = ffmpeg;
             return ffmpegInstance;
         }
@@ -130,9 +154,8 @@
             try {
                 const ffmpeg = await initFFmpeg();
                 
-                document.getElementById('statusText').innerText = "Loading Audio & Unzipping Timings...";
+                document.getElementById('statusText').innerText = "Unzipping & Calculating Timings...";
                 
-                // 1. Process Audio if uploaded
                 let audioFileName = null;
                 if (audioFile) {
                     const ext = audioFile.name.substring(audioFile.name.lastIndexOf('.'));
@@ -140,10 +163,7 @@
                     await ffmpeg.writeFile(audioFileName, new Uint8Array(await audioFile.arrayBuffer()));
                 }
 
-                // 2. Read JSON
                 const sequenceData = JSON.parse(await jsonFile.text()).sort((a, b) => a.start - b.start);
-                
-                // 3. Unzip the frames in browser RAM
                 const zipBuffer = await zipFile.arrayBuffer();
                 const zip = await JSZip.loadAsync(zipBuffer);
 
@@ -151,27 +171,23 @@
                 let currentTime = 0.0;
                 let writtenFiles = new Set();
 
-                // 4. Iterate and Extract frames from ZIP
                 for (let i = 0; i < sequenceData.length; i++) {
                     const item = sequenceData[i];
 
                     if (!writtenFiles.has(item.frame)) {
-                        // Smart ZIP Search: Looks for the file even if it's trapped in a sub-folder
                         let fileInZip = zip.file(item.frame);
                         if (!fileInZip) {
                             const found = Object.keys(zip.files).find(name => name.endsWith('/' + item.frame) || name === item.frame);
                             if (found) fileInZip = zip.file(found);
                         }
                         
-                        if (!fileInZip) throw new Error(`Could not find '${item.frame}' inside the ZIP file!`);
+                        if (!fileInZip) throw new Error(`Could not find '${item.frame}' inside the ZIP!`);
                         
-                        // Extract just this image and write to FFmpeg
                         const imgData = await fileInZip.async('uint8array');
                         await ffmpeg.writeFile(item.frame, imgData);
                         writtenFiles.add(item.frame);
                     }
 
-                    // TIMELINE GAP PADDING FIX
                     if (item.start > currentTime) {
                         const gap = item.start - currentTime;
                         concatText += `file '${i === 0 ? item.frame : sequenceData[i-1].frame}'\n`;
@@ -184,43 +200,32 @@
                     currentTime = item.end;
                 }
 
-                // FFmpeg requirement: last file repeated
                 if (sequenceData.length > 0) {
                     concatText += `file '${sequenceData[sequenceData.length - 1].frame}'\n`;
                 }
 
                 await ffmpeg.writeFile('input.txt', concatText);
-                
-                document.getElementById('statusText').innerText = "Encoding Perfectly Synced Video...";
+                document.getElementById('statusText').innerText = "Encoding MP4 (This may take a while)...";
 
-                // 5. Build Wasm FFmpeg Command
                 let cmd = ['-f', 'concat', '-safe', '0', '-i', 'input.txt'];
                 
-                if (audioFileName) {
-                    cmd.push('-i', audioFileName);
-                }
+                if (audioFileName) { cmd.push('-i', audioFileName); }
 
-                // Video settings + Latency Fixes included!
                 cmd.push(
                     '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
                     '-c:v', 'libx264', 
-                    '-preset', 'slow', 
+                    '-preset', 'ultrafast', 
                     '-crf', '15', 
                     '-pix_fmt', 'yuv420p',
-                    '-vsync', 'vfr', // STOPS LATENCY DRIFT
-                    '-video_track_timescale', '1000' // MILLISECOND PRECISION
+                    '-vsync', 'vfr', 
+                    '-video_track_timescale', '1000'
                 );
 
-                if (audioFileName) {
-                    cmd.push('-c:a', 'aac', '-b:a', '192k', '-shortest');
-                }
-
+                if (audioFileName) { cmd.push('-c:a', 'aac', '-b:a', '192k', '-shortest'); }
                 cmd.push('output.mp4');
 
-                // Execute!
                 await ffmpeg.exec(cmd);
 
-                // 6. Output Result
                 const fileData = await ffmpeg.readFile('output.mp4');
                 const videoUrl = URL.createObjectURL(new Blob([fileData.buffer], { type: 'video/mp4' }));
 
