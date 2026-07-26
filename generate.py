@@ -37,24 +37,24 @@ def main():
 
     for i, item in enumerate(sequence):
         frame_name = item['frame']
-        start = item['start']
-        end = item['end']
+        start = float(item['start'])
+        end = float(item['end'])
         
         # Padding timeline gaps (holds the frame if there is a gap)
         if start > current_time:
             gap = start - current_time
             if i == 0:
                 concat_lines.append(f"file '{frame_name}'")
-                concat_lines.append(f"duration {gap:.3f}")
+                concat_lines.append(f"duration {gap:.6f}") # 6-decimal precision prevents timeline rounding drift
             else:
                 prev_frame = sequence[i-1]['frame']
                 concat_lines.append(f"file '{prev_frame}'")
-                concat_lines.append(f"duration {gap:.3f}")
+                concat_lines.append(f"duration {gap:.6f}")
 
         # The actual frame duration
         duration = end - start
         concat_lines.append(f"file '{frame_name}'")
-        concat_lines.append(f"duration {duration:.3f}")
+        concat_lines.append(f"duration {duration:.6f}") 
         current_time = end
 
     # Required by FFmpeg's concat demuxer
@@ -75,11 +75,14 @@ def main():
     if audio_file:
         cmd.extend(["-i", audio_file])
         
-    # Add video quality settings
+    # FIX APPLIED HERE: 
+    # We use -vf "fps=30" to force FFmpeg to read your sparse 53 timestamps 
+    # and duplicate the images physically into a continuous 30 FPS video stream.
     cmd.extend([
-        "-r", "30", # FIX: Force a constant frame rate of 30 FPS to resolve audio sync drift
-        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", 
-        "-c:v", "libx264", "-preset", "slow", "-crf", "15", 
+        "-vf", "fps=30,scale=trunc(iw/2)*2:trunc(ih/2)*2", 
+        "-c:v", "libx264", 
+        "-preset", "slow", 
+        "-crf", "15", 
         "-pix_fmt", "yuv420p"
     ])
     
