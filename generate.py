@@ -64,32 +64,27 @@ def main():
         f.write("\n".join(concat_lines) + "\n")
 
     print("Generating ultra-HQ MP4... please wait.")
+
     output_video = "output_hq.mp4"
     
-    # Build the FFmpeg Command
+    # 2. Build the FFmpeg Command
     cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", "input.txt"]
     
+    # If audio exists, add it to the command
     if audio_file:
         cmd.extend(["-i", audio_file])
         
+    # Add video quality settings
     cmd.extend([
         "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", 
-        "-c:v", "libx264", 
-        "-preset", "slow", 
-        "-crf", "15", 
-        "-pix_fmt", "yuv420p",
-        
-        # --- THE LATENCY FIXES ---
-        "-vsync", "vfr",                # Forces Variable Framerate (stops 25fps rounding)
-        "-video_track_timescale", "1000" # Sets video timebase to milliseconds for perfect sync
+        "-c:v", "libx264", "-preset", "slow", "-crf", "15", 
+        "-pix_fmt", "yuv420p"
     ])
     
+    # If audio exists, mix it using high quality AAC encoding
     if audio_file:
-        # Using copy for audio prevents re-encoding latency if using a WAV file
-        if audio_file.endswith('.wav'):
-            cmd.extend(["-c:a", "aac", "-b:a", "192k", "-shortest"])
-        else:
-            cmd.extend(["-c:a", "aac", "-b:a", "192k", "-shortest"])
+        # -shortest ensures the video stops cleanly when the audio stops (or vice versa)
+        cmd.extend(["-c:a", "aac", "-b:a", "192k", "-shortest"])
 
     cmd.append(output_video)
 
@@ -97,6 +92,7 @@ def main():
     result = subprocess.run(cmd, cwd=frames_dir)
 
     if result.returncode == 0:
+        # Move the output video to the main folder
         os.rename(os.path.join(frames_dir, output_video), output_video)
         print(f"\nSUCCESS! Video saved as '{output_video}'")
     else:
