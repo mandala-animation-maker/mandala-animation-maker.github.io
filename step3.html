@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON + PNG to MP4 Video Generator</title>
+    
+    <!-- JSZip for extracting the ZIP file -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- FFmpeg.wasm for creating the video -->
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text: #1F2937;
+            --text-light: #6B7280;
+            --border: #E5E7EB;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background-color: var(--card-bg);
+            max-width: 600px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 30px;
+        }
+        h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; text-align: center; }
+        p.subtitle { color: var(--text-light); text-align: center; margin-bottom: 25px; font-size: 0.95rem; }
+        
+        .input-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: #F9FAFB;
+        }
+        input[type="file"]:hover { border-color: var(--primary); }
+        
+        button {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        button:disabled { background-color: #9CA3AF; cursor: not-allowed; }
+
+        .status-container { margin-top: 20px; display: none; }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        #log {
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: var(--text-light);
+            background: #F9FAFB;
+            padding: 10px;
+            border-radius: 6px;
+            height: 100px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            white-space: pre-wrap;
+        }
+
+        .result-container { margin-top: 25px; display: none; }
+        video {
+            width: 100%;
+            border-radius: 8px;
+            background-color: #000;
+            margin-bottom: 15px;
+        }
+        .download-btn {
+            display: inline-block;
+            text-align: center;
+            text-decoration: none;
+            background-color: #10B981;
+        }
+        .download-btn:hover { background-color: #059669; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>JSON + Frames to MP4</h1>
+    <p class="subtitle">Generate high-quality video perfectly synced to your timings.</p>
+
+    <div class="input-group">
+        <label for="jsonInput">1. Upload Sequence JSON file</label>
+        <input type="file" id="jsonInput" accept=".json">
+    </div>
+
+    <div class="input-group">
+        <label for="zipInput">2. Upload ZIP file containing Frames (.png)</label>
+        <input type="file" id="zipInput" accept=".zip">
+    </div>
+
+    <button id="generateBtn" onclick="startProcess()">Generate MP4 Video</button>
+
+    <div class="status-container" id="statusContainer">
+        <label id="statusText">Initializing...</label>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div id="log"></div>
+    </div>
+
+    <div class="result-container" id="resultContainer">
+        <label>Result Preview:</label>
+        <video id="outputVideo" controls></video>
+        <a id="downloadBtn" class="download-btn" href="#" download="output_hq.mp4"><button type="button" style="background-color: inherit; pointer-events: none;">Download Ultra-HQ MP4</button></a>
+    </div>
+</div>
+
+<script>
+    const { FFmpeg } = window.FFmpeg;
+    let ffmpeg = null;
+
+    function logMessage(msg) {
+        const logEl = document.getElementById('log');
+        logEl.textContent += msg + '\n';
+        logEl.scrollTop = logEl.scrollHeight;
+        console.log(msg);
+    }
+
+    async function loadFFmpeg() {
+        if (ffmpeg) return;
+        ffmpeg = new FFmpeg();
+        
+        ffmpeg.on('log', ({ message }) => logMessage(message));
+        
+        ffmpeg.on('progress', ({ progress, time }) => {
+            const percentage = Math.max(0, Math.min(100, progress * 100));
+            document.getElementById('progressFill').style.width = `${percentage}%`;
+            document.getElementById('statusText').innerText = `Encoding Video... ${Math.round(percentage)}%`;
+        });
+
+        const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+        await ffmpeg.load({
+            coreURL: `${baseURL}/ffmpeg-core.js`,
+            wasmURL: `${baseURL}/ffmpeg-core.wasm`,
+        });
+    }
+
+    async function startProcess() {
+        const jsonInput = document.getElementById('jsonInput');
+        const zipInput = document.getElementById('zipInput');
+        
+        if (!jsonInput.files[0] || !zipInput.files[0]) {
+            alert("Please upload both the JSON file and the ZIP file.");
+            return;
+        }
+
+        const btn = document.getElementById('generateBtn');
+        btn.disabled = true;
+        btn.innerText = "Processing...";
+        
+        document.getElementById('statusContainer').style.display = 'block';
+        document.getElementById('resultContainer').style.display = 'none';
+        document.getElementById('log').textContent = '';
+        document.getElementById('progressFill').style.width = '0%';
+        document.getElementById('statusText').innerText = "Loading FFmpeg Engine...";
+
+        try {
+            // 1. Initialize FFmpeg
+            await loadFFmpeg();
+
+            // 2. Read and Parse JSON
+            document.getElementById('statusText').innerText = "Parsing JSON & Unzipping frames...";
+            const jsonText = await jsonInput.files[0].text();
+            const sequenceData = JSON.parse(jsonText);
+
+            // 3. Read and Unzip images
+            const zipBuffer = await zipInput.files[0].arrayBuffer();
+            const zip = await JSZip.loadAsync(zipBuffer);
+
+            let concatText = '';
+            
+            logMessage("Extracting frames and writing to virtual file system...");
+
+            // 4. Iterate over sequence and write frames to FFmpeg Virtual File System
+            for (let i = 0; i < sequenceData.length; i++) {
+                const item = sequenceData[i];
+                
+                // Calculate accurate duration (end - start)
+                const duration = (item.end - item.start).toFixed(3);
+                
+                // Extract file from zip
+                const fileInZip = zip.file(item.frame);
+                if (!fileInZip) {
+                    throw new Error(`File '${item.frame}' mentioned in JSON was not found in the ZIP!`);
+                }
+                
+                const imgData = await fileInZip.async('uint8array');
+                
+                // Write image to FFmpeg memory
+                await ffmpeg.writeFile(item.frame, imgData);
+                
+                // Append to FFmpeg concat demuxer instructions
+                concatText += `file '${item.frame}'\n`;
+                concatText += `duration ${duration}\n`;
+            }
+
+            // FFmpeg Concat Demuxer Quirk: 
+            // The last file needs to be added again without a duration to ensure it doesn't get skipped.
+            if (sequenceData.length > 0) {
+                const lastItem = sequenceData[sequenceData.length - 1];
+                concatText += `file '${lastItem.frame}'\n`;
+            }
+
+            // Write the instructions text file
+            await ffmpeg.writeFile('input.txt', concatText);
+
+            document.getElementById('statusText').innerText = "Encoding high-quality MP4...";
+
+            // 5. Run FFmpeg command to generate ultra-high-quality MP4
+            // -f concat : Reads the text file we just made
+            // -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" : Forces width/height to be even numbers (required by H.264 mp4 codec) without losing quality
+            // -c:v libx264 -preset slow -crf 15 : Creates visually lossless high-quality video
+            // -pix_fmt yuv420p : Ensures maximum compatibility across all browsers and devices
+            await ffmpeg.exec([
+                '-f', 'concat', 
+                '-safe', '0', 
+                '-i', 'input.txt', 
+                '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+                '-c:v', 'libx264', 
+                '-preset', 'slow', 
+                '-crf', '15', 
+                '-pix_fmt', 'yuv420p', 
+                'output.mp4'
+            ]);
+
+            // 6. Retrieve the generated file
+            document.getElementById('statusText').innerText = "Finalizing video...";
+            const fileData = await ffmpeg.readFile('output.mp4');
+            const videoBlob = new Blob([fileData.buffer], { type: 'video/mp4' });
+            const videoUrl = URL.createObjectURL(videoBlob);
+
+            // 7. Display the result
+            const videoEl = document.getElementById('outputVideo');
+            videoEl.src = videoUrl;
+            
+            const downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.href = videoUrl;
+
+            document.getElementById('statusContainer').style.display = 'none';
+            document.getElementById('resultContainer').style.display = 'block';
+
+        } catch (error) {
+            console.error(error);
+            alert("An error occurred: " + error.message);
+            document.getElementById('statusText').innerText = "Failed!";
+            document.getElementById('progressFill').style.backgroundColor = "#EF4444";
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Generate MP4 Video";
+        }
+    }
+</script>
+
+</body>
+</html>
