@@ -3,307 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON + PNG to MP4 Video Generator</title>
+    <title>Video Generator Pro (Synced Audio)</title>
     
-    <!-- JSZip for extracting the ZIP file -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    
-    <!-- FFmpeg.wasm and Util (UMD builds) -->
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/umd/index.js"></script>
+    <!-- FFmpeg.wasm -->
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/util@0.12.2/dist/umd/index.js"></script>
 
     <style>
-        :root {
-            --primary: #4F46E5;
-            --primary-hover: #4338CA;
-            --bg: #F3F4F6;
-            --card-bg: #FFFFFF;
-            --text: #1F2937;
-            --text-light: #6B7280;
-            --border: #E5E7EB;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            line-height: 1.5;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-        .container {
-            background-color: var(--card-bg);
-            max-width: 600px;
-            width: 100%;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            padding: 30px;
-        }
-        h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; text-align: center; }
-        p.subtitle { color: var(--text-light); text-align: center; margin-bottom: 25px; font-size: 0.95rem; }
+        :root { --primary: #0ea5e9; --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --border: #cbd5e1; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 30px; display: flex; justify-content: center; }
+        .container { background: var(--card); max-width: 650px; width: 100%; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); padding: 30px; }
+        h1 { text-align: center; margin-bottom: 5px; color: var(--primary); }
+        p.subtitle { text-align: center; font-size: 0.9rem; color: #64748b; margin-bottom: 25px; }
         
-        .input-group { margin-bottom: 20px; }
-        label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }
-        input[type="file"] {
-            width: 100%;
-            padding: 10px;
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            cursor: pointer;
-            background-color: #F9FAFB;
-        }
-        input[type="file"]:hover { border-color: var(--primary); }
+        .input-group { background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border); }
+        label { display: block; font-weight: 600; margin-bottom: 8px; color: #334155; }
+        input[type="file"] { width: 100%; cursor: pointer; }
         
-        button {
-            width: 100%;
-            background-color: var(--primary);
-            color: white;
-            font-weight: 600;
-            border: none;
-            padding: 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.2s;
-        }
-        button:hover { background-color: var(--primary-hover); }
-        button:disabled { background-color: #9CA3AF; cursor: not-allowed; }
-
-        .status-container { margin-top: 20px; display: none; }
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background-color: var(--border);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-        .progress-fill {
-            height: 100%;
-            background-color: var(--primary);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        #log {
-            font-family: monospace;
-            font-size: 0.8rem;
-            color: var(--text-light);
-            background: #F9FAFB;
-            padding: 10px;
-            border-radius: 6px;
-            height: 100px;
-            overflow-y: auto;
-            border: 1px solid var(--border);
-            white-space: pre-wrap;
-        }
-
-        .result-container { margin-top: 25px; display: none; }
-        video {
-            width: 100%;
-            border-radius: 8px;
-            background-color: #000;
-            margin-bottom: 15px;
-        }
-        .download-btn {
-            display: block;
-            width: 100%;
-            text-align: center;
-            text-decoration: none;
-            background-color: #10B981;
-            color: white;
-            font-weight: 600;
-            padding: 14px;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: background-color 0.2s;
-        }
-        .download-btn:hover { background-color: #059669; }
+        button { width: 100%; background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        button:hover { background: #0284c7; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+        
+        .progress-bar { width: 100%; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; margin: 15px 0; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
+        #log { background: #1e293b; color: #38bdf8; padding: 10px; font-family: monospace; font-size: 0.8rem; border-radius: 6px; height: 150px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
+        
+        .result-container { display: none; margin-top: 25px; border-top: 2px solid var(--border); padding-top: 20px; }
+        video { width: 100%; border-radius: 8px; background: #000; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .download-btn { display: block; text-align: center; background: #10b981; color: white; padding: 15px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: 0.2s; }
+        .download-btn:hover { background: #059669; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>JSON + Frames to MP4</h1>
-    <p class="subtitle">Generate high-quality video perfectly synced to your timings.</p>
+    <h1>Video Generator Pro</h1>
+    <p class="subtitle">100% Sync • Custom Audio • Variable Framerate Fix</p>
 
     <div class="input-group">
-        <label for="jsonInput">1. Upload Sequence JSON file</label>
+        <label>1. Upload sequence.json</label>
         <input type="file" id="jsonInput" accept=".json">
     </div>
 
     <div class="input-group">
-        <label for="zipInput">2. Upload ZIP file containing Frames (.png)</label>
-        <input type="file" id="zipInput" accept=".zip">
+        <label>2. Upload Audio Track (.wav or .mp3) [Optional]</label>
+        <input type="file" id="audioInput" accept="audio/*">
+    </div>
+
+    <div class="input-group">
+        <label>3. Select your "frames" Folder (Contains PNGs)</label>
+        <!-- webkitdirectory allows users to upload a whole folder directly without ZIP -->
+        <input type="file" id="framesInput" webkitdirectory directory multiple>
     </div>
 
     <button id="generateBtn" onclick="window.startProcess()">Generate MP4 Video</button>
 
-    <div class="status-container" id="statusContainer">
-        <label id="statusText">Initializing...</label>
-        <div class="progress-bar">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
+    <div class="status-container" id="statusContainer" style="display: none; margin-top: 20px;">
+        <label id="statusText" style="text-align: center;">Initializing Engine...</label>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
         <div id="log"></div>
     </div>
 
     <div class="result-container" id="resultContainer">
-        <label>Result Preview:</label>
+        <h3 style="margin-bottom: 10px; text-align: center;">Success! Your Video is Ready</h3>
         <video id="outputVideo" controls></video>
-        <a id="downloadBtn" class="download-btn" href="#" download="output_hq.mp4">Download Ultra-HQ MP4</a>
+        <a id="downloadBtn" class="download-btn" href="#" download="synced_output.mp4">Download HQ Video</a>
     </div>
 </div>
 
 <script>
-    // Wait for DOM to prevent variable scope leaking/conflicts
     document.addEventListener("DOMContentLoaded", () => {
+        let ffmpegInstance = null;
         
-        let ffmpegInstance = null; // Private singleton
-
-        function logMessage(msg) {
+        function logMsg(msg) {
             const logEl = document.getElementById('log');
             logEl.textContent += msg + '\n';
             logEl.scrollTop = logEl.scrollHeight;
-            console.log(msg);
         }
 
         async function initFFmpeg() {
             if (ffmpegInstance) return ffmpegInstance;
-
-            // 1. Destructure correctly from the UMD globals that @ffmpeg/ffmpeg v12 exposes.
             const { FFmpeg } = window.FFmpegWASM;
             const { toBlobURL } = window.FFmpegUtil;
 
             const ffmpeg = new FFmpeg();
-            
-            ffmpeg.on('log', ({ message }) => logMessage(message));
-            
-            ffmpeg.on('progress', ({ progress, time }) => {
-                const percentage = Math.max(0, Math.min(100, progress * 100));
-                document.getElementById('progressFill').style.width = `${percentage}%`;
-                document.getElementById('statusText').innerText = `Encoding Video... ${Math.round(percentage)}%`;
+            ffmpeg.on('log', ({ message }) => logMsg(message));
+            ffmpeg.on('progress', ({ progress }) => {
+                let perc = Math.max(0, Math.min(100, progress * 100));
+                document.getElementById('progressFill').style.width = `${perc}%`;
+                document.getElementById('statusText').innerText = `Encoding Engine Working... ${Math.round(perc)}%`;
             });
 
-            // 2. Fetch dependencies via toBlobURL. 
-            // Bypasses strict MIME and cross-origin blocking typically triggered on hosted web servers.
             const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
             
-            logMessage("Downloading FFmpeg Core Engine...");
-            await ffmpeg.load({
-                coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-            });
+            try {
+                await ffmpeg.load({
+                    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+                    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
+                });
+            } catch (e) {
+                logMsg("Applying CORS fallback...");
+                await ffmpeg.load({ coreURL: `${baseURL}/ffmpeg-core.js`, wasmURL: `${baseURL}/ffmpeg-core.wasm` });
+            }
 
             ffmpegInstance = ffmpeg;
             return ffmpegInstance;
         }
 
         window.startProcess = async function() {
-            const jsonInput = document.getElementById('jsonInput');
-            const zipInput = document.getElementById('zipInput');
+            const jsonFile = document.getElementById('jsonInput').files[0];
+            const audioFile = document.getElementById('audioInput').files[0];
+            const framesFiles = document.getElementById('framesInput').files; // This grabs the whole folder!
             
-            if (!jsonInput.files[0] || !zipInput.files[0]) {
-                alert("Please upload both the JSON file and the ZIP file.");
-                return;
-            }
+            if (!jsonFile || framesFiles.length === 0) return alert("You must provide the JSON file and select your frames folder.");
 
             const btn = document.getElementById('generateBtn');
-            btn.disabled = true;
-            btn.innerText = "Processing...";
-            
+            btn.disabled = true; btn.innerText = "Processing...";
             document.getElementById('statusContainer').style.display = 'block';
             document.getElementById('resultContainer').style.display = 'none';
             document.getElementById('log').textContent = '';
             document.getElementById('progressFill').style.width = '0%';
-            document.getElementById('statusText').innerText = "Loading FFmpeg Engine...";
 
             try {
-                // Initialize safely
                 const ffmpeg = await initFFmpeg();
+                
+                document.getElementById('statusText').innerText = "Loading Audio & Timings...";
+                
+                // 1. Process Audio if uploaded
+                let audioFileName = null;
+                if (audioFile) {
+                    const ext = audioFile.name.substring(audioFile.name.lastIndexOf('.'));
+                    audioFileName = 'audio_track' + ext;
+                    await ffmpeg.writeFile(audioFileName, new Uint8Array(await audioFile.arrayBuffer()));
+                }
 
-                // Read and Parse JSON
-                document.getElementById('statusText').innerText = "Parsing JSON & Unzipping frames...";
-                const jsonText = await jsonInput.files[0].text();
-                const sequenceData = JSON.parse(jsonText);
-
-                // Read and Unzip images
-                const zipBuffer = await zipInput.files[0].arrayBuffer();
-                const zip = await JSZip.loadAsync(zipBuffer);
-
+                // 2. Process JSON & Timings
+                const sequenceData = JSON.parse(await jsonFile.text()).sort((a, b) => a.start - b.start);
+                
                 let concatText = '';
-                logMessage("Extracting frames and writing to virtual file system...");
+                let currentTime = 0.0;
+                let writtenFiles = new Set();
 
-                // Iterate over sequence and write frames to FFmpeg Virtual File System
+                // 3. Write Frames from the Folder
                 for (let i = 0; i < sequenceData.length; i++) {
                     const item = sequenceData[i];
-                    
-                    const duration = (item.end - item.start).toFixed(3);
-                    const fileInZip = zip.file(item.frame);
-                    
-                    if (!fileInZip) {
-                        throw new Error(`File '${item.frame}' mentioned in JSON was not found in the ZIP!`);
+
+                    if (!writtenFiles.has(item.frame)) {
+                        // Find the exact PNG inside the folder they uploaded
+                        const file = Array.from(framesFiles).find(f => f.name === item.frame);
+                        if (!file) throw new Error(`Could not find '${item.frame}' in the folder you selected!`);
+                        
+                        await ffmpeg.writeFile(item.frame, new Uint8Array(await file.arrayBuffer()));
+                        writtenFiles.add(item.frame);
+                    }
+
+                    // TIMELINE GAP PADDING FIX
+                    if (item.start > currentTime) {
+                        const gap = item.start - currentTime;
+                        concatText += `file '${i === 0 ? item.frame : sequenceData[i-1].frame}'\n`;
+                        concatText += `duration ${gap.toFixed(3)}\n`;
                     }
                     
-                    const imgData = await fileInZip.async('uint8array');
-                    
-                    await ffmpeg.writeFile(item.frame, imgData);
-                    
+                    const duration = item.end - item.start;
                     concatText += `file '${item.frame}'\n`;
-                    concatText += `duration ${duration}\n`;
+                    concatText += `duration ${duration.toFixed(3)}\n`;
+                    currentTime = item.end;
                 }
 
-                // FFmpeg Concat Demuxer Quirk (The last file must be redeclared to not be dropped)
+                // FFmpeg requirement: last file repeated
                 if (sequenceData.length > 0) {
-                    const lastItem = sequenceData[sequenceData.length - 1];
-                    concatText += `file '${lastItem.frame}'\n`;
+                    concatText += `file '${sequenceData[sequenceData.length - 1].frame}'\n`;
                 }
 
-                // Write the instructions text file
                 await ffmpeg.writeFile('input.txt', concatText);
+                
+                document.getElementById('statusText').innerText = "Encoding Perfectly Synced Video...";
 
-                document.getElementById('statusText').innerText = "Encoding high-quality MP4...";
+                // 4. Build Wasm FFmpeg Command
+                let cmd = ['-f', 'concat', '-safe', '0', '-i', 'input.txt'];
+                
+                if (audioFileName) {
+                    cmd.push('-i', audioFileName);
+                }
 
-                // Run FFmpeg command
-                await ffmpeg.exec([
-                    '-f', 'concat', 
-                    '-safe', '0', 
-                    '-i', 'input.txt', 
+                // Video settings + Latency Fixes included!
+                cmd.push(
                     '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
                     '-c:v', 'libx264', 
                     '-preset', 'slow', 
                     '-crf', '15', 
-                    '-pix_fmt', 'yuv420p', 
-                    'output.mp4'
-                ]);
+                    '-pix_fmt', 'yuv420p',
+                    '-vsync', 'vfr', // STOPS THE LATENCY DRIFT
+                    '-video_track_timescale', '1000' // MILLISECOND PRECISION
+                );
 
-                // Retrieve the generated file
-                document.getElementById('statusText').innerText = "Finalizing video...";
+                if (audioFileName) {
+                    cmd.push('-c:a', 'aac', '-b:a', '192k', '-shortest');
+                }
+
+                cmd.push('output.mp4');
+
+                // Execute!
+                await ffmpeg.exec(cmd);
+
+                // 5. Output Result
                 const fileData = await ffmpeg.readFile('output.mp4');
-                const videoBlob = new Blob([fileData.buffer], { type: 'video/mp4' });
-                const videoUrl = URL.createObjectURL(videoBlob);
+                const videoUrl = URL.createObjectURL(new Blob([fileData.buffer], { type: 'video/mp4' }));
 
-                // Display the result
-                const videoEl = document.getElementById('outputVideo');
-                videoEl.src = videoUrl;
-                
-                const downloadBtn = document.getElementById('downloadBtn');
-                downloadBtn.href = videoUrl;
-
+                document.getElementById('outputVideo').src = videoUrl;
+                document.getElementById('downloadBtn').href = videoUrl;
                 document.getElementById('statusContainer').style.display = 'none';
                 document.getElementById('resultContainer').style.display = 'block';
 
             } catch (error) {
-                console.error(error);
-                alert("An error occurred: " + error.message);
+                alert("Error: " + error.message);
                 document.getElementById('statusText').innerText = "Failed!";
-                document.getElementById('progressFill').style.backgroundColor = "#EF4444";
+                document.getElementById('progressFill').style.backgroundColor = "#ef4444";
             } finally {
-                btn.disabled = false;
-                btn.innerText = "Generate MP4 Video";
+                btn.disabled = false; btn.innerText = "Generate MP4 Video";
             }
         };
     });
 </script>
-
 </body>
 </html>
