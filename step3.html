@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Generator Pro (Synced Audio)</title>
+    <title>Perfect Sync Video Generator (ZIP + Audio)</title>
     
-    <!-- FFmpeg.wasm -->
+    <!-- JSZip for extracting the ZIP file -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- FFmpeg.wasm for Browser Video Encoding -->
     <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
     <script src="https://unpkg.com/@ffmpeg/util@0.12.2/dist/umd/index.js"></script>
 
@@ -39,7 +42,7 @@
 
 <div class="container">
     <h1>Video Generator Pro</h1>
-    <p class="subtitle">100% Sync • Custom Audio • Variable Framerate Fix</p>
+    <p class="subtitle">100% Sync • Custom Audio • ZIP Uploads</p>
 
     <div class="input-group">
         <label>1. Upload sequence.json</label>
@@ -52,9 +55,8 @@
     </div>
 
     <div class="input-group">
-        <label>3. Select your "frames" Folder (Contains PNGs)</label>
-        <!-- webkitdirectory allows users to upload a whole folder directly without ZIP -->
-        <input type="file" id="framesInput" webkitdirectory directory multiple>
+        <label>3. Upload Frames (.zip file)</label>
+        <input type="file" id="zipInput" accept=".zip">
     </div>
 
     <button id="generateBtn" onclick="window.startProcess()">Generate MP4 Video</button>
@@ -114,9 +116,9 @@
         window.startProcess = async function() {
             const jsonFile = document.getElementById('jsonInput').files[0];
             const audioFile = document.getElementById('audioInput').files[0];
-            const framesFiles = document.getElementById('framesInput').files; // This grabs the whole folder!
+            const zipFile = document.getElementById('zipInput').files[0];
             
-            if (!jsonFile || framesFiles.length === 0) return alert("You must provide the JSON file and select your frames folder.");
+            if (!jsonFile || !zipFile) return alert("You must provide both the JSON file and the ZIP file.");
 
             const btn = document.getElementById('generateBtn');
             btn.disabled = true; btn.innerText = "Processing...";
@@ -128,7 +130,7 @@
             try {
                 const ffmpeg = await initFFmpeg();
                 
-                document.getElementById('statusText').innerText = "Loading Audio & Timings...";
+                document.getElementById('statusText').innerText = "Loading Audio & Unzipping Timings...";
                 
                 // 1. Process Audio if uploaded
                 let audioFileName = null;
@@ -138,23 +140,34 @@
                     await ffmpeg.writeFile(audioFileName, new Uint8Array(await audioFile.arrayBuffer()));
                 }
 
-                // 2. Process JSON & Timings
+                // 2. Read JSON
                 const sequenceData = JSON.parse(await jsonFile.text()).sort((a, b) => a.start - b.start);
                 
+                // 3. Unzip the frames in browser RAM
+                const zipBuffer = await zipFile.arrayBuffer();
+                const zip = await JSZip.loadAsync(zipBuffer);
+
                 let concatText = '';
                 let currentTime = 0.0;
                 let writtenFiles = new Set();
 
-                // 3. Write Frames from the Folder
+                // 4. Iterate and Extract frames from ZIP
                 for (let i = 0; i < sequenceData.length; i++) {
                     const item = sequenceData[i];
 
                     if (!writtenFiles.has(item.frame)) {
-                        // Find the exact PNG inside the folder they uploaded
-                        const file = Array.from(framesFiles).find(f => f.name === item.frame);
-                        if (!file) throw new Error(`Could not find '${item.frame}' in the folder you selected!`);
+                        // Smart ZIP Search: Looks for the file even if it's trapped in a sub-folder
+                        let fileInZip = zip.file(item.frame);
+                        if (!fileInZip) {
+                            const found = Object.keys(zip.files).find(name => name.endsWith('/' + item.frame) || name === item.frame);
+                            if (found) fileInZip = zip.file(found);
+                        }
                         
-                        await ffmpeg.writeFile(item.frame, new Uint8Array(await file.arrayBuffer()));
+                        if (!fileInZip) throw new Error(`Could not find '${item.frame}' inside the ZIP file!`);
+                        
+                        // Extract just this image and write to FFmpeg
+                        const imgData = await fileInZip.async('uint8array');
+                        await ffmpeg.writeFile(item.frame, imgData);
                         writtenFiles.add(item.frame);
                     }
 
@@ -180,7 +193,7 @@
                 
                 document.getElementById('statusText').innerText = "Encoding Perfectly Synced Video...";
 
-                // 4. Build Wasm FFmpeg Command
+                // 5. Build Wasm FFmpeg Command
                 let cmd = ['-f', 'concat', '-safe', '0', '-i', 'input.txt'];
                 
                 if (audioFileName) {
@@ -194,7 +207,7 @@
                     '-preset', 'slow', 
                     '-crf', '15', 
                     '-pix_fmt', 'yuv420p',
-                    '-vsync', 'vfr', // STOPS THE LATENCY DRIFT
+                    '-vsync', 'vfr', // STOPS LATENCY DRIFT
                     '-video_track_timescale', '1000' // MILLISECOND PRECISION
                 );
 
@@ -207,7 +220,7 @@
                 // Execute!
                 await ffmpeg.exec(cmd);
 
-                // 5. Output Result
+                // 6. Output Result
                 const fileData = await ffmpeg.readFile('output.mp4');
                 const videoUrl = URL.createObjectURL(new Blob([fileData.buffer], { type: 'video/mp4' }));
 
