@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio to Frame Subtitle Aligner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 0.75rem; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 font-sans">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-400 mb-2">Audio-Script Frame Aligner</h1>
+            <p class="text-slate-400">Force-align your audio to your exact script line-by-line and export as Frame JSON.</p>
+        </header>
+
+        <!-- API Key Configuration -->
+        <section class="glass-panel p-6 shadow-lg">
+            <h2 class="text-xl font-bold text-white mb-4 flex items-center">
+                <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm mr-3">1</span>
+                API Key Configuration
+            </h2>
+            <div class="bg-slate-800 p-4 rounded-md mb-4 text-sm text-slate-300">
+                <p class="mb-2"><strong class="text-white">How to get your FREE API Key:</strong></p>
+                <ol class="list-decimal ml-5 space-y-1">
+                    <li>Go to <a href="https://console.groq.com/keys" target="_blank" class="text-blue-400 hover:underline">Groq's API Console</a> and log in or create an account (generous free usage included).</li>
+                    <li>Click <strong>Create API Key</strong>, give it a name, and copy the generated key.</li>
+                    <li>Paste the key below. It will be securely stored in your browser's local storage.</li>
+                </ol>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-4">
+                <input type="password" id="apiKey" placeholder="Paste your Groq API Key here..." class="flex-1 bg-slate-900 border border-slate-600 rounded-md px-4 py-2 text-white focus:outline-none focus:border-blue-500">
+                <button onclick="saveApiKey()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-md transition duration-200">Save Key</button>
+            </div>
+            <p id="keyStatus" class="text-sm mt-2 text-green-400 hidden">API Key saved to browser storage!</p>
+        </section>
+
+        <!-- Input Section -->
+        <section class="glass-panel p-6 shadow-lg">
+            <h2 class="text-xl font-bold text-white mb-4 flex items-center">
+                <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm mr-3">2</span>
+                Input Data
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Audio Input -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Voiceover Audio File (Max 25MB)</label>
+                    <input type="file" id="audioFile" accept="audio/*" class="block w-full text-sm text-slate-400
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-md file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-blue-600 file:text-white
+                        hover:file:bg-blue-700
+                        bg-slate-900 border border-slate-600 rounded-md p-2">
+                </div>
+
+                <!-- Script Input -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Your Script (One frame/word per line)</label>
+                    <textarea id="scriptText" rows="10" placeholder="Never&#10;look&#10;back&#10;again" class="w-full bg-slate-900 border border-slate-600 rounded-md p-4 text-white focus:outline-none focus:border-blue-500 resize-y"></textarea>
+                    <p class="text-xs text-slate-400 mt-2">* Each line in this box will become a unique frame (e.g., frame_001.png, frame_002.png). For numbers, type them as words (e.g., "one hundred" instead of "100") for best AI alignment.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Process Section -->
+        <section class="text-center">
+            <button onclick="processData()" id="processBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition hover:scale-105 text-lg">
+                Generate Alignments
+            </button>
+            <p id="processStatus" class="mt-4 text-blue-400 font-medium"></p>
+        </section>
+
+        <!-- Output Section -->
+        <section class="glass-panel p-6 shadow-lg mb-20 hidden" id="outputSection">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white flex items-center">
+                    <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm mr-3">3</span>
+                    Exported JSON
+                </h2>
+                <button onclick="downloadJSON()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200">
+                    Download JSON File
+                </button>
+            </div>
+            <pre id="jsonOutput" class="bg-slate-900 border border-slate-600 rounded-md p-4 text-sm text-green-300 overflow-x-auto whitespace-pre-wrap"></pre>
+        </section>
+
+    </div>
+
+    <!-- Main Logic Script -->
+    <script>
+        // --- Initialization ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedKey = localStorage.getItem('groqApiKey');
+            if (savedKey) {
+                document.getElementById('apiKey').value = savedKey;
+            }
+        });
+
+        function saveApiKey() {
+            const key = document.getElementById('apiKey').value.trim();
+            if (key) {
+                localStorage.setItem('groqApiKey', key);
+                const status = document.getElementById('keyStatus');
+                status.classList.remove('hidden');
+                setTimeout(() => status.classList.add('hidden'), 3000);
+            } else {
+                alert("Please enter a valid API Key first.");
+            }
+        }
+
+        // --- Levenshtein Distance for fuzzy matching words ---
+        function levenshtein(a, b) {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            let matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        // --- Processing Logic ---
+        async function processData() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const audioFile = document.getElementById('audioFile').files[0];
+            const scriptText = document.getElementById('scriptText').value.trim();
+            const statusEl = document.getElementById('processStatus');
+            const btn = document.getElementById('processBtn');
+
+            if (!apiKey) return alert("Please provide and save your Groq API Key.");
+            if (!audioFile) return alert("Please upload an audio file.");
+            if (!scriptText) return alert("Please enter your script.");
+
+            // Update UI
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            document.getElementById('outputSection').classList.add('hidden');
+            
+            try {
+                // Step 1: Upload and get Word-Level Timestamps from Groq's Whisper API
+                statusEl.innerText = "Step 1/2: Sending audio to AI for precise transcription... (This might take a few moments)";
+                
+                const url = 'https://api.groq.com/openai/v1/audio/transcriptions';
+                
+                // Construct the Multipart FormData
+                const formData = new FormData();
+                formData.append('file', audioFile);
+                formData.append('model', 'whisper-large-v3');
+                formData.append('response_format', 'verbose_json'); 
+                formData.append('timestamp_granularities[]', 'word'); // Request word-level timestamps
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`
+                        // Note: Browsers automatically set 'Content-Type': 'multipart/form-data' with the correct boundary when using FormData.
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errBody = await response.text();
+                    throw new Error(`API Error ${response.status}: ${errBody}`);
+                }
+
+                const data = await response.json();
+                
+                // Extract words array from Groq API response
+                const wordsArr = data.words || [];
+                if (wordsArr.length === 0) {
+                    throw new Error("No words were recognized in the audio file.");
+                }
+
+                // Step 2: Force-Align the AI timestamps to the user's specific text script
+                statusEl.innerText = "Step 2/2: Aligning AI timestamps to your custom script frames...";
+                const frameData = alignScriptToAudio(scriptText, wordsArr);
+
+                // Step 3: Show Result
+                const jsonString = JSON.stringify(frameData, null, 2);
+                document.getElementById('jsonOutput').textContent = jsonString;
+                document.getElementById('outputSection').classList.remove('hidden');
+                
+                statusEl.innerText = "Successfully generated frames!";
+                statusEl.classList.replace('text-blue-400', 'text-green-400');
+                
+            } catch (error) {
+                console.error(error);
+                statusEl.innerText = `Error: ${error.message}`;
+                statusEl.classList.replace('text-blue-400', 'text-red-400');
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // --- Alignment Algorithm ---
+        function alignScriptToAudio(script, apiWords) {
+            // Split script by newlines and remove empty lines
+            const scriptLines = script.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            const frames = [];
+            let apiIndex = 0; // Keep track of where we are in the audio transcription
+
+            for (let i = 0; i < scriptLines.length; i++) {
+                let line = scriptLines[i];
+                // Extract clean alphanumeric expected words from the script line
+                let lineWords = line.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w);
+                
+                let frameStart = null;
+                let frameEnd = null;
+
+                // Search for each word in the line in sequential order
+                for (let expectedWord of lineWords) {
+                    let bestMatchIndex = -1;
+                    let lookahead = 20; // Check up to 20 words ahead for the match
+                    let minDistance = Infinity;
+
+                    for (let j = apiIndex; j < Math.min(apiIndex + lookahead, apiWords.length); j++) {
+                        let apiWordNorm = apiWords[j].word.toLowerCase().replace(/[^\w\s]/g, '');
+
+                        // Exact match or substring match
+                        if (apiWordNorm === expectedWord || apiWordNorm.includes(expectedWord) || expectedWord.includes(apiWordNorm)) {
+                            bestMatchIndex = j;
+                            break;
+                        }
+
+                        // Fuzzy match (Levenshtein distance) in case the AI slightly misheard a word
+                        let dist = levenshtein(apiWordNorm, expectedWord);
+                        // Allow slight misspellings (e.g., "back" vs "bck")
+                        if (dist <= 2 && dist < minDistance) {
+                            minDistance = dist;
+                            bestMatchIndex = j;
+                        }
+                    }
+
+                    if (bestMatchIndex !== -1) {
+                        // If this is the FIRST word found in the line, set the frame's START time
+                        if (frameStart === null) frameStart = apiWords[bestMatchIndex].start;
+                        // Always update the frame's END time to the end of the newly matched word
+                        frameEnd = apiWords[bestMatchIndex].end;
+                        // Move pointer to the next word in the audio transcript
+                        apiIndex = bestMatchIndex + 1; 
+                    }
+                }
+
+                // --- Fallbacks if words weren't perfectly detected ---
+                if (frameStart === null) {
+                    // Start immediately after the previous frame ended, or 0.0 if it's the first frame
+                    frameStart = frames.length > 0 ? frames[frames.length - 1].end : 0.0;
+                }
+                if (frameEnd === null || frameEnd <= frameStart) {
+                    // Make a safe guess for duration if the end time was lost
+                    frameEnd = frameStart + 0.5;
+                }
+
+                // Build the frame object formatted to exactly what you requested
+                let frameNumber = String(i + 1).padStart(3, '0');
+                frames.push({
+                    frame: `frame_${frameNumber}.png`,
+                    start: parseFloat(frameStart.toFixed(3)),
+                    end: parseFloat(frameEnd.toFixed(3))
+                });
+            }
+
+            return frames;
+        }
+
+        // --- Export Feature ---
+        function downloadJSON() {
+            const jsonText = document.getElementById('jsonOutput').textContent;
+            if (!jsonText) return;
+            
+            const blob = new Blob([jsonText], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "frame_timestamps.json";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
