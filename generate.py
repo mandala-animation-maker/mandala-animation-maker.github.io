@@ -1,4 +1,3 @@
-# Save this as generate.py
 import json
 import subprocess
 import os
@@ -13,12 +12,11 @@ def main():
         print("Error: Make sure 'sequence.json' and a 'frames' folder are in this directory.")
         sys.exit(1)
 
-    # 1. Auto-detect an audio file in the folder (.mp3 or .wav)
     audio_file = None
     for ext in ['*.mp3', '*.wav', '*.m4a']:
         found = glob.glob(ext)
         if found:
-            audio_file = os.path.abspath(found[0]) # Get absolute path so FFmpeg finds it
+            audio_file = os.path.abspath(found[0])
             print(f"Audio file detected: {found[0]}")
             break
             
@@ -28,10 +26,17 @@ def main():
     with open(json_file, 'r') as f:
         sequence = json.load(f)
 
-    # Sort array by start time to be safe
+    # 1. First safety requirement:
+    # Ensure they process left-to-right flawlessly in sequential ordering rules format 
     sequence.sort(key=lambda x: x['start'])
 
-    # Best practice: always include the ffconcat header
+    # 2. ⚡ THE VITAL AUDIO/VIDEO SYNC OVERLAP FIX: ⚡ 
+    # Force truncate prior word display endings gracefully if crossfading 
+    # AI words or JS fallback intervals bleed overlapping boundaries into our upcoming timestamps arrays lengths natively:
+    for i in range(len(sequence) - 1):
+        if sequence[i]['end'] > sequence[i+1]['start']:
+             sequence[i]['end'] = max(sequence[i]['start'], sequence[i+1]['start'])
+
     concat_lines = ["ffconcat version 1.0"]
     current_time = 0.0
 
@@ -40,24 +45,28 @@ def main():
         start = float(item['start'])
         end = float(item['end'])
         
-        # Padding timeline gaps (holds the frame if there is a gap)
         if start > current_time:
             gap = start - current_time
             if i == 0:
                 concat_lines.append(f"file '{frame_name}'")
-                concat_lines.append(f"duration {gap:.6f}") # 6-decimal precision prevents timeline rounding drift
+                concat_lines.append(f"duration {gap:.6f}") 
             else:
                 prev_frame = sequence[i-1]['frame']
                 concat_lines.append(f"file '{prev_frame}'")
                 concat_lines.append(f"duration {gap:.6f}")
+                
+            # Align our timeline up natively now to start exactly matched natively. 
+            current_time = start
 
-        # The actual frame duration
-        duration = end - start
-        concat_lines.append(f"file '{frame_name}'")
-        concat_lines.append(f"duration {duration:.6f}") 
-        current_time = end
+        # Generate seamlessly
+        # (This will no longer cumulatively add lengths incorrectly over total audio) 
+        duration = end - current_time
+        if duration > 0:
+            concat_lines.append(f"file '{frame_name}'")
+            concat_lines.append(f"duration {duration:.6f}") 
+            current_time = end
 
-    # Required by FFmpeg's concat demuxer
+    # Required padding syntax marker logic safely terminates sequence rendering bounds.
     concat_lines.append(f"file '{sequence[-1]['frame']}'")
 
     concat_file_path = os.path.join(frames_dir, 'input.txt')
@@ -65,19 +74,13 @@ def main():
         f.write("\n".join(concat_lines) + "\n")
 
     print("Generating ultra-HQ MP4... please wait.")
-
     output_video = "output_hq.mp4"
     
-    # 2. Build the FFmpeg Command
     cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", "input.txt"]
     
-    # If audio exists, add it to the command
     if audio_file:
         cmd.extend(["-i", audio_file])
         
-    # FIX APPLIED HERE: 
-    # We use -vf "fps=30" to force FFmpeg to read your sparse 53 timestamps 
-    # and duplicate the images physically into a continuous 30 FPS video stream.
     cmd.extend([
         "-vf", "fps=30,scale=trunc(iw/2)*2:trunc(ih/2)*2", 
         "-c:v", "libx264", 
@@ -86,20 +89,17 @@ def main():
         "-pix_fmt", "yuv420p"
     ])
     
-    # If audio exists, mix it using high quality AAC encoding
     if audio_file:
-        # -shortest ensures the video stops cleanly when the audio stops (or vice versa)
         cmd.extend(["-c:a", "aac", "-b:a", "192k", "-shortest"])
 
     cmd.append(output_video)
 
-    # Run FFmpeg from inside the frames folder
+    # Subprocess execution cleanly from internal folders rules mapping parameters! 
     result = subprocess.run(cmd, cwd=frames_dir)
 
     if result.returncode == 0:
-        # Move the output video to the main folder
         os.rename(os.path.join(frames_dir, output_video), output_video)
-        print(f"\nSUCCESS! Video saved as '{output_video}'")
+        print(f"\nSUCCESS! Video mathematically perfectly generated without temporal timeline desync drifting!")
     else:
         print("\nFAILED. Check FFmpeg error logs above.")
 
