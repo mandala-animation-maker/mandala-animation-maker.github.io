@@ -26,48 +26,60 @@ def main():
     with open(json_file, 'r') as f:
         sequence = json.load(f)
 
-    # 1. First safety requirement:
-    # Ensure they process left-to-right flawlessly in sequential ordering rules format 
-    sequence.sort(key=lambda x: x['start'])
+    # 1. Safety requirement: process left-to-right flawless sequential ordering.
+    # Converted to float inside lambda to prevent string sorting issues.
+    sequence.sort(key=lambda x: float(x['start']))
 
-    # 2. ⚡ THE VITAL AUDIO/VIDEO SYNC OVERLAP FIX: ⚡ 
-    # Force truncate prior word display endings gracefully if crossfading 
-    # AI words or JS fallback intervals bleed overlapping boundaries into our upcoming timestamps arrays lengths natively:
-    for i in range(len(sequence) - 1):
-        if sequence[i]['end'] > sequence[i+1]['start']:
-             sequence[i]['end'] = max(sequence[i]['start'], sequence[i+1]['start'])
+    # Generate a black frame for the very first silence natively.
+    # It takes the very first frame and blacks it out to ensure the aspect ratio/dimensions perfectly match.
+    black_frame_name = "black_base_frame.png"
+    black_frame_path = os.path.join(frames_dir, black_frame_name)
+    if not os.path.exists(black_frame_path):
+        print("Generating initial black frame for the beginning silence...")
+        first_frame_path = os.path.join(frames_dir, sequence[0]['frame'])
+        subprocess.run([
+            "ffmpeg", "-y", "-i", first_frame_path, 
+            "-vf", "drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill", 
+            "-frames:v", "1", black_frame_path
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     concat_lines = ["ffconcat version 1.0"]
-    current_time = 0.0
 
+    # 2. ⚡ THE VITAL AUDIO/VIDEO SYNC OVERLAP FIX: ⚡
+    # The current frame will now persist during silences until the NEXT frame's exact start.
     for i, item in enumerate(sequence):
-        frame_name = item['frame']
         start = float(item['start'])
-        end = float(item['end'])
+
+        if i == 0:
+            # If there's a starting gap before the first spoken word, show the black screen ONCE.
+            if start > 0:
+                concat_lines.append(f"file '{black_frame_name}'")
+                concat_lines.append(f"duration {start:.6f}") 
+        else:
+            # For everything else: Previous frame stays active precisely until THIS next frame starts.
+            # (No middle black screens. The frame waits through the silence).
+            prev_start = float(sequence[i-1]['start'])
+            duration = start - prev_start
+            if duration > 0:
+                concat_lines.append(f"file '{sequence[i-1]['frame']}'")
+                concat_lines.append(f"duration {duration:.6f}")
+
+    # 3. FIX FOR AUDIO CUTTING OFF AT THE END:
+    # We extend the last frame to a massive duration.
+    # Because ffmpeg uses "-shortest", it will force the video to smoothly end EXACTLY when the audio stream ends,
+    # ensuring not a single millisecond of trailing audio breathing/talking is ever cut prematurely!
+    last_item = sequence[-1]
+    concat_lines.append(f"file '{last_item['frame']}'")
+    
+    if audio_file:
+        concat_lines.append("duration 9999.000000")
+    else:
+        # Fallback behaviour just in case we run it strictly without an audio file
+        final_duration = max(float(last_item['end']) - float(last_item['start']), 0.1)
+        concat_lines.append(f"duration {final_duration:.6f}")
         
-        if start > current_time:
-            gap = start - current_time
-            if i == 0:
-                concat_lines.append(f"file '{frame_name}'")
-                concat_lines.append(f"duration {gap:.6f}") 
-            else:
-                prev_frame = sequence[i-1]['frame']
-                concat_lines.append(f"file '{prev_frame}'")
-                concat_lines.append(f"duration {gap:.6f}")
-                
-            # Align our timeline up natively now to start exactly matched natively. 
-            current_time = start
-
-        # Generate seamlessly
-        # (This will no longer cumulatively add lengths incorrectly over total audio) 
-        duration = end - current_time
-        if duration > 0:
-            concat_lines.append(f"file '{frame_name}'")
-            concat_lines.append(f"duration {duration:.6f}") 
-            current_time = end
-
-    # Required padding syntax marker logic safely terminates sequence rendering bounds.
-    concat_lines.append(f"file '{sequence[-1]['frame']}'")
+    # Standard FFmpeg concat rules dictate the last file must be repeated once more without a duration label.
+    concat_lines.append(f"file '{last_item['frame']}'")
 
     concat_file_path = os.path.join(frames_dir, 'input.txt')
     with open(concat_file_path, 'w') as f:
