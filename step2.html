@@ -70,7 +70,7 @@
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-slate-300 mb-2">Your Script (One frame/word per line)</label>
                     <textarea id="scriptText" rows="10" placeholder="Never&#10;look&#10;back&#10;again" class="w-full bg-slate-900 border border-slate-600 rounded-md p-4 text-white focus:outline-none focus:border-blue-500 resize-y"></textarea>
-                    <p class="text-xs text-slate-400 mt-2">* Each line in this box will become a unique frame (e.g., frame_001.png, frame_002.png). For numbers, type them as words (e.g., "one hundred" instead of "100") for best AI alignment.</p>
+                    <p class="text-xs text-slate-400 mt-2">* Each line in this box will become a unique frame. The AI will now use this exact text as a cheat sheet to prevent missed words.</p>
                 </div>
             </div>
         </section>
@@ -160,15 +160,22 @@
             document.getElementById('outputSection').classList.add('hidden');
             
             try {
-                statusEl.innerText = "Step 1/2: Sending audio to AI for precise transcription... (This might take a few moments)";
+                statusEl.innerText = "Step 1/2: Forcing AI to listen using your script as a strict cheat sheet...";
                 
+                // Convert multiline script into a single paragraph for the AI prompt (limits to 1000 chars to stay safe within API prompt limits)
+                const cheatSheetPrompt = scriptText.replace(/\n/g, ' ').substring(0, 1000);
+
                 const url = 'https://api.groq.com/openai/v1/audio/transcriptions';
-                
                 const formData = new FormData();
                 formData.append('file', audioFile);
                 formData.append('model', 'whisper-large-v3');
                 formData.append('response_format', 'verbose_json'); 
                 formData.append('timestamp_granularities[]', 'word');
+                
+                // NEW: Force the AI into high accuracy mode
+                formData.append('language', 'en'); // Stops it from wasting time guessing the language
+                formData.append('prompt', cheatSheetPrompt); // Forces it to expect your exact words
+                formData.append('temperature', '0'); // Forces the most deterministic, non-creative outcome
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -190,16 +197,15 @@
                     throw new Error("No words were recognized in the audio file.");
                 }
 
-                statusEl.innerText = "Step 2/2: Aligning AI timestamps to your custom script frames...";
+                statusEl.innerText = "Step 2/2: Structuring timelines and applying strict chronology...";
                 
-                // Align utilizing Needleman-Wunsch & Interpolation
                 const frameData = alignScriptToAudio(scriptText, wordsArr);
 
                 const jsonString = JSON.stringify(frameData, null, 2);
                 document.getElementById('jsonOutput').textContent = jsonString;
                 document.getElementById('outputSection').classList.remove('hidden');
                 
-                statusEl.innerText = "Successfully generated frames!";
+                statusEl.innerText = "Successfully generated exact frames!";
                 statusEl.classList.replace('text-blue-400', 'text-green-400');
                 
             } catch (error) {
@@ -214,39 +220,34 @@
 
         // --- Advanced Global Sequence Alignment Algorithm ---
         function alignScriptToAudio(script, apiWords) {
-            // 1. Get exact words from user script (one word/phrase per line)
             const scriptLines = script.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-            
-            // Normalize words for matching
             const sWords = scriptLines.map(l => l.toLowerCase().replace(/[^\w\s]/g, ''));
             const aWords = apiWords.map(w => w.word.toLowerCase().replace(/[^\w\s]/g, ''));
 
             const N = sWords.length;
             const M = aWords.length;
 
-            // 2. Global Alignment (Needleman-Wunsch) matrix
             const dp = Array.from({ length: N + 1 }, () => new Array(M + 1).fill(0));
             const ptr = Array.from({ length: N + 1 }, () => new Array(M + 1).fill(0));
-            const GAP = 2; // Penalty for skipping
+            const GAP = 2; 
 
-            for (let i = 1; i <= N; i++) { dp[i][0] = i * GAP; ptr[i][0] = 1; } // 1 = skip script word
-            for (let j = 1; j <= M; j++) { dp[0][j] = j * GAP; ptr[0][j] = 2; } // 2 = skip audio word
+            for (let i = 1; i <= N; i++) { dp[i][0] = i * GAP; ptr[i][0] = 1; } 
+            for (let j = 1; j <= M; j++) { dp[0][j] = j * GAP; ptr[0][j] = 2; } 
 
             for (let i = 1; i <= N; i++) {
                 for (let j = 1; j <= M; j++) {
                     let dist = levenshtein(sWords[i-1], aWords[j-1]);
                     
-                    // Forgive partial matches completely (e.g. "back" vs "background")
                     if (sWords[i-1].includes(aWords[j-1]) || aWords[j-1].includes(sWords[i-1])) {
                         dist = Math.min(dist, 1);
                     }
                     
                     let matchCost = dp[i-1][j-1] + (dist <= 2 ? dist : GAP + 1); 
-                    let deleteCost = dp[i-1][j] + GAP; // script word missed in audio
-                    let insertCost = dp[i][j-1] + GAP; // extra noise word in audio
+                    let deleteCost = dp[i-1][j] + GAP; 
+                    let insertCost = dp[i][j-1] + GAP; 
 
                     if (matchCost <= deleteCost && matchCost <= insertCost) {
-                        dp[i][j] = matchCost; ptr[i][j] = 0; // 0 = match
+                        dp[i][j] = matchCost; ptr[i][j] = 0; 
                     } else if (deleteCost <= insertCost) {
                         dp[i][j] = deleteCost; ptr[i][j] = 1;
                     } else {
@@ -255,7 +256,6 @@
                 }
             }
 
-            // Backtrack to find the optimal mapping
             let i = N, j = M;
             const matches = new Array(N).fill(null);
             while (i > 0 || j > 0) {
@@ -269,7 +269,6 @@
                 }
             }
 
-            // 3. Build frames and absolutely enforce forward progression (no overlap/backward jumps)
             const frames = [];
             let lastEnd = 0;
 
@@ -281,7 +280,6 @@
                     start = apiWords[apiIdx].start;
                     end = apiWords[apiIdx].end;
                     
-                    // Force time forwards strictly
                     if (start < lastEnd) start = lastEnd + 0.01;
                     if (end <= start) end = start + 0.1;
                     
@@ -298,12 +296,11 @@
                 });
             }
 
-            // 4. Interpolate missing words neatly into the exact gaps between matched words
+            // Interpolation fallback (just in case)
             const totalAudioTime = apiWords.length > 0 ? apiWords[apiWords.length - 1].end : (N * 0.5);
             
             for (let idx = 0; idx < N; idx++) {
                 if (!frames[idx].isMatched) {
-                    // Identify the boundaries of the gap
                     let prevEnd = idx > 0 ? frames[idx-1].end : 0.0;
                     
                     let nextIdx = idx;
@@ -314,25 +311,35 @@
                     let missingCount = nextIdx - idx;
                     let nextStart = (nextIdx < N) ? frames[nextIdx].start : Math.max(prevEnd + (missingCount * 0.3), totalAudioTime);
                     
-                    // Divide available time up equally among all words that fell in this gap
                     let timePerWord = Math.max((nextStart - prevEnd) / missingCount, 0.01); 
 
                     for (let k = 0; k < missingCount; k++) {
                         let start = prevEnd + (timePerWord * k);
                         let end = start + timePerWord;
-                        frames[idx + k].start = parseFloat(start.toFixed(3));
-                        frames[idx + k].end = parseFloat(end.toFixed(3));
+                        frames[idx + k].start = start;
+                        frames[idx + k].end = end;
                     }
                     
-                    idx = nextIdx - 1; // Skip ahead over the ones we just interpolated
-                } else {
-                    // Just format the numbers for already valid items
-                    frames[idx].start = parseFloat(frames[idx].start.toFixed(3));
-                    frames[idx].end = parseFloat(frames[idx].end.toFixed(3));
+                    idx = nextIdx - 1; 
                 }
             }
 
-            // Return clean array stripped of our temporary tracking properties
+            // The Strict Chronological Enforcer
+            let globalMinTime = 0.0;
+            for (let f = 0; f < N; f++) {
+                if (frames[f].start < globalMinTime) {
+                    frames[f].start = globalMinTime;
+                }
+                if (frames[f].end <= frames[f].start) {
+                    frames[f].end = frames[f].start + 0.01;
+                }
+                
+                globalMinTime = frames[f].end;
+                
+                frames[f].start = parseFloat(frames[f].start.toFixed(3));
+                frames[f].end = parseFloat(frames[f].end.toFixed(3));
+            }
+
             return frames.map(f => {
                 return { frame: f.frame, start: f.start, end: f.end };
             });
@@ -348,7 +355,7 @@
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = "frame_timestamps.json";
+            a.download = "perfect_frame_timestamps.json";
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
