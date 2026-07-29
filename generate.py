@@ -1,179 +1,209 @@
-import json
-import subprocess
+#!/usr/bin/env python3
 import os
 import sys
+import json
 import glob
 import math
+import tempfile
+import shutil
+import subprocess
 
-# Strict 30 FPS for flawless social media compatibility (TikTok, IG, YouTube, Facebook)
-FPS = 30.0 
+def find_inputs():
+    """Discover the required .mp3 and .json files in the current directory."""
+    mp3_files = glob.glob("*.mp3")
+    json_files = glob.glob("*.json")
+
+    if len(mp3_files) != 1:
+        sys.exit(f"ERROR: Expected exactly one .mp3 file, found {len(mp3_files)}: {mp3_files}")
+    if len(json_files) != 1:
+        sys.exit(f"ERROR: Expected exactly one .json file, found {len(json_files)}: {json_files}")
+
+    return mp3_files[0], json_files[0]
+
+def validate_frames(segments, frames_dir="frames"):
+    """Ensure the frames directory exists and contains every frame referenced in the JSON."""
+    if not os.path.isdir(frames_dir):
+        sys.exit(f"ERROR: Missing '{frames_dir}/' directory.")
+
+    missing = []
+    for seg in segments:
+        frame_name = seg.get("frame")
+        if not frame_name:
+            sys.exit(f"ERROR: Invalid JSON segment, missing 'frame' key: {seg}")
+        
+        frame_path = os.path.join(frames_dir, frame_name)
+        if not os.path.isfile(frame_path):
+            missing.append(frame_name)
+            
+    if missing:
+        print("ERROR: The following frames referenced in the JSON are missing from 'frames/':")
+        for m in set(missing):
+            print(f"  - {m}")
+        sys.exit(1)
 
 def get_audio_duration(audio_file):
+    """
+    Step 1: Get ground-truth audio duration using ffprobe.
+    We don't trust the JSON's last 'end' value alone because matching the physical 
+    audio bounds ensures no truncation.
+    """
+    cmd = [
+        "ffprobe", 
+        "-v", "quiet", 
+        "-show_entries", "format=duration", 
+        "-of", "csv=p=0", 
+        audio_file
+    ]
     try:
-        cmd = [
-            "ffprobe", "-v", "error", "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1", audio_file
-        ]
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, text=True, check=True)
-        return float(result.stdout.strip())
-    except:
-        return None
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return float(res.stdout.strip())
+    except subprocess.CalledProcessError as e:
+        sys.exit(f"ERROR: ffprobe failed to read audio duration.\n{e.stderr}")
+    except ValueError:
+        sys.exit(f"ERROR: ffprobe returned invalid duration format: {res.stdout}")
+
+def check_ffmpeg_fps_mode_support():
+    """
+    Check if FFmpeg supports the newer '-fps_mode' or if we must fall back to '-vsync'.
+    '-fps_mode' replaced '-vsync' in FFmpeg 5.1.
+    """
+    try:
+        # Run a dummy command that parses arguments without doing actual work
+        res = subprocess.run(
+            ["ffmpeg", "-fps_mode", "cfr", "-f", "lavfi", "-i", "nullsrc=s=1x1", "-frames:v", "1", "-f", "null", "-"],
+            capture_output=True, text=True
+        )
+        if res.returncode == 0:
+            return "-fps_mode"
+    except Exception:
+        pass
+    return "-vsync"
 
 def main():
-    frames_dir = 'frames'
-
-    # --- 1. Basic Checks ---
-    if not os.path.exists(frames_dir):
-        print("Error: Make sure a 'frames' folder exists in this directory.")
-        sys.exit(1)
-
-    json_files = glob.glob('*.json')
-    if not json_files:
-        print("Error: No JSON sequence file found.")
-        sys.exit(1)
-        
-    json_file = json_files[0]
-    print(f"[+] Loaded sequence: {json_file}")
-
-    audio_file = None
-    for ext in ['*.mp3', '*.wav', '*.m4a']:
-        found = glob.glob(ext)
-        if found:
-            audio_file = os.path.abspath(found[0])
-            print(f"[+] Loaded audio:    {os.path.basename(audio_file)}")
-            break
-
-    # --- 2. Load Sequence ---
+    audio_file, json_file = find_inputs()
+    
     with open(json_file, 'r') as f:
-        sequence = json.load(f)
+        try:
+            segments = json.load(f)
+        except json.JSONDecodeError as e:
+            sys.exit(f"ERROR: Failed to parse {json_file}: {e}")
 
-    # Sort strictly by start time
-    sequence.sort(key=lambda x: float(x['start']))
+    if not segments:
+        sys.exit("ERROR: JSON segments list is empty.")
 
-    # Generate an opening black frame in case the JSON doesn't start at 0.0s
-    black_frame = os.path.join(frames_dir, "black_base_frame.png")
-    if not os.path.exists(black_frame):
-        print("[+] Creating base black frame...")
-        first_img = os.path.join(frames_dir, sequence[0]['frame'])
-        subprocess.run([
-            "ffmpeg", "-y", "-i", first_img, 
-            "-vf", "drawbox=color=black:t=fill", 
-            "-frames:v", "1", black_frame
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    # --- 3. Determine Total Timeline Length ---
-    last_item_start = float(sequence[-1]['start'])
-    last_item_end = float(sequence[-1].get('end', last_item_start + 1.0))
+    validate_frames(segments)
     
-    audio_duration = get_audio_duration(audio_file) if audio_file else 0.0
-    total_duration = max(audio_duration, last_item_end)
+    audio_duration = get_audio_duration(audio_file)
+    json_duration = segments[-1]["end"]
     
-    total_frames = math.ceil(total_duration * FPS)
+    fps = 30
+    frame_duration_sec = 1.0 / fps
 
-    # --- 4. Absolute Time Mapping (The Magic Fix) ---
-    # We map every JSON entry to its exact 30FPS slot. No timing drift!
-    events = []
-    if float(sequence[0]['start']) > 0:
-        events.append({'frame': black_frame, 'start_frame': 0})
+    print("--- Video Generation Pre-flight ---")
+    print(f"Segments found   : {len(segments)}")
+    print(f"Audio duration   : {audio_duration:.3f}s ({audio_duration * 1000:.0f} ms)")
+    print(f"JSON end duration: {json_duration:.3f}s ({json_duration * 1000:.0f} ms)")
+
+    if abs(audio_duration - json_duration) > frame_duration_sec:
+        print(f"WARNING: Ground-truth audio duration differs from JSON 'end' by more than 1 frame (> {frame_duration_sec:.3f}s). Treating audio as authoritative length.")
+
+    # =========================================================================
+    # Step 2: Convert segments to frame counts using CUMULATIVE ROUNDING
+    # 
+    # Why this fixes the drift bug:
+    # Converting each segment's (end - start) to frames independently and rounding 
+    # causes rounding errors to accumulate over hundreds of segments. A video 
+    # could end up visibly out-of-sync by the end.
+    # By rounding the *absolute* timestamp against a cumulative frame counter, 
+    # rounding errors self-correct, guaranteeing frame-accurate sync globally.
+    # =========================================================================
+    cumulative_frames = 0
+    frame_sequence = []
+
+    for seg in segments:
+        # Calculate the absolute frame boundary from time 0
+        target_frame = round(seg["end"] * fps)
+        count = target_frame - cumulative_frames
         
-    for item in sequence:
-        start_time = float(item['start'])
-        # Round to nearest 30fps slot
-        slot = int(round(start_time * FPS))
-        events.append({
-            'frame': os.path.join(frames_dir, item['frame']), 
-            'start_slot': slot
-        })
+        if count > 0:
+            frame_sequence.extend([seg["frame"]] * count)
+            cumulative_frames = target_frame
 
-    # Sort events by slot just to be absolutely safe
-    events.sort(key=lambda x: x['start_slot'])
-
-    # --- 5. Stream Video to FFmpeg ---
-    print(f"\n[>>>] Compiling {total_frames} frames into a 30 FPS Social Media MP4...")
-    output_video = "output_social.mp4"
-    
-    cmd = [
-        "ffmpeg", "-y", 
-        "-f", "image2pipe", 
-        "-vcodec", "png", 
-        "-framerate", str(int(FPS)), 
-        "-i", "-"
-    ]
-    
-    if audio_file:
-        cmd.extend(["-i", audio_file])
+    # Pad out the end so the video length >= the real audio length.
+    # Why this fixes the audio truncation bug:
+    # If the video is even a fraction of a frame shorter than the audio, FFmpeg 
+    # may clip the tail end of the audio track. Padding ensures the video holds 
+    # the last frame just long enough to let the narration finish naturally.
+    required_frames = math.ceil(audio_duration * fps)
+    if cumulative_frames < required_frames:
+        padding_count = required_frames - cumulative_frames
+        frame_sequence.extend([segments[-1]["frame"]] * padding_count)
+        cumulative_frames = required_frames
         
-    # Standard social media encoding parameters (H.264, YUV420p)
-    cmd.extend([
-        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", 
-        "-c:v", "libx264", 
-        "-preset", "fast", 
-        "-crf", "18", 
-        "-pix_fmt", "yuv420p"
-    ])
-    
-    if audio_file:
-        cmd.extend(["-c:a", "aac", "-b:a", "256k", "-shortest"])
+    print(f"Computed frames  : {cumulative_frames} frames (at {fps} fps)")
 
-    cmd.append(output_video)
-
-    process = subprocess.Popen(
-        cmd, 
-        stdin=subprocess.PIPE, 
-        stdout=subprocess.DEVNULL, 
-        stderr=subprocess.DEVNULL, 
-        cwd=frames_dir
-    )
-    
-    current_event_idx = 0
-    current_frame_path = None
-    current_frame_bytes = b""
+    # =========================================================================
+    # Step 3: Materialize a true CFR-friendly image sequence
+    #
+    # Why this fixes the VFR/Dropped Frames bug:
+    # FFmpeg's concat demuxer (using the `duration` directive) generates Variable 
+    # Frame Rate (VFR) MP4s when times don't map cleanly to 30fps ticks. Social
+    # platforms usually assume CFR uploads, leading to dropped frames/stuttering 
+    # after their re-encode. 
+    # By materializing strict 1-to-1 frames sequentially and feeding them into 
+    # the image2 demuxer, we guarantee a pure, zero-stutter Constant Frame Rate.
+    # =========================================================================
+    tmp_dir = tempfile.mkdtemp(prefix="video_frames_")
     
     try:
-        # The Flipbook Loop
-        for frame_slot in range(total_frames):
+        # Symlink frames to sequence format required by image2 demuxer
+        for i, src in enumerate(frame_sequence):
+            src_path = os.path.abspath(os.path.join("frames", src))
+            dst_path = os.path.join(tmp_dir, f"frame_{i:06d}.png")
+            os.symlink(src_path, dst_path)
             
-            # Check if it is time to move to the next image based on the absolute slot
-            while current_event_idx < len(events) - 1 and frame_slot >= events[current_event_idx + 1]['start_slot']:
-                current_event_idx += 1
-                
-            frame_path = events[current_event_idx]['frame']
-            
-            # Only read from disk when the image actually changes
-            if frame_path != current_frame_path:
-                if os.path.exists(frame_path):
-                    with open(frame_path, 'rb') as f:
-                        current_frame_bytes = f.read()
-                else:
-                    # If image is missing, it just continues showing the last one (no freezing!)
-                    print(f"\n[!] Missing image: {frame_path}")
-                current_frame_path = frame_path
-                
-            # Drop the image into the 1/30th second slot
-            if current_frame_bytes:
-                process.stdin.write(current_frame_bytes)
-            
-            # Progress UI
-            if frame_slot % 15 == 0:
-                percent = int((frame_slot / total_frames) * 100)
-                sys.stdout.write(f"\r[>] Rendering: {percent}% complete ({frame_slot}/{total_frames} frames)...")
-                sys.stdout.flush()
-                
-        # Close pipe to tell FFmpeg to finish saving
-        process.stdin.close()
-        process.wait()
+        print(f"Symlinks created : {tmp_dir}/")
         
-        if process.returncode == 0:
-            final_path = os.path.join(frames_dir, output_video)
-            if os.path.exists(final_path):
-                os.rename(final_path, output_video)
-            print(f"\n\n[SUCCESS] Video created perfectly: '{output_video}'")
-        else:
-            print("\n\n[ERROR] FFmpeg crashed. Remove stdout/stderr suppression to see why.")
+        fps_flag_name = check_ffmpeg_fps_mode_support()
+
+        cmd = [
+            "ffmpeg", "-y",
+            "-framerate", str(fps),
+            "-i", os.path.join(tmp_dir, "frame_%06d.png"),
+            "-i", audio_file,
+            "-c:v", "libx264",
+            "-profile:v", "high",
+            "-preset", "medium",
+            "-crf", "18",
+            # Even width/height & 4:2:0 chroma are required for mobile hardware decoders
+            "-pix_fmt", "yuv420p",
+            "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+            "-r", str(fps),
+            fps_flag_name, "cfr",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-ar", "48000",
+            # Moves moov atom to front so Shorts/Reels start streaming instantly
+            "-movflags", "+faststart",
+            "output_hq.mp4"
+        ]
+
+        print(f"\nRunning FFmpeg...\nCommand: {' '.join(cmd)}")
+        
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if res.returncode != 0:
+            print("\nFFMPEG ERROR LOG:", file=sys.stderr)
+            print(res.stderr, file=sys.stderr)
+            sys.exit("ERROR: FFmpeg encoding failed. See stderr above. (Temp directory preserved for inspection)")
             
-    except Exception as e:
-        print(f"\n\n[FATAL ERROR] {e}")
-        process.kill()
+        print("\nSUCCESS! Video rendered to output_hq.mp4")
+
+    finally:
+        # Only cleanup if we succeeded. If it failed, keeping the tmp_dir 
+        # is critical for debugging the GitHub Actions runner.
+        if 'res' in locals() and res.returncode == 0:
+            shutil.rmtree(tmp_dir)
 
 if __name__ == "__main__":
     main()
