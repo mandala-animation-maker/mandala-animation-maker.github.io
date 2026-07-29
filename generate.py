@@ -1,133 +1,130 @@
-#!/usr/bin/env python3
-import os
-import sys
-import json
 import glob
-import math
+import json
+import os
 import subprocess
-from PIL import Image
+import sys
 
-def find_inputs():
-    mp3_files = glob.glob("*.mp3")
-    json_files = glob.glob("*.json")
-    if len(mp3_files) != 1: sys.exit(f"ERROR: Expected exactly 1 .mp3, found {len(mp3_files)}")
-    if len(json_files) != 1: sys.exit(f"ERROR: Expected exactly 1 .json, found {len(json_files)}")
-    return mp3_files[0], json_files[0]
 
-def get_audio_duration(audio_file):
-    cmd = ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", audio_file]
-    try:
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return float(res.stdout.strip())
-    except Exception as e:
-        sys.exit(f"ERROR: ffprobe failed to read audio duration.\n{e}")
+def find_file_by_extension(ext):
+  """Finds the first file matching the extension in root or subdirectories."""
+  files = glob.glob(f"*.{ext}")
+  if not files:
+    files = glob.glob(f"**/*.{ext}", recursive=True)
+  return files[0] if files else None
+
+
+def resolve_frame_path(frame_name):
+  """Resolves the path to the frame image either directly or inside 'frames/'."""
+  if os.path.exists(frame_name):
+    return os.path.abspath(frame_name)
+
+  # Look inside the 'frames' directory
+  in_frames = os.path.join("frames", os.path.basename(frame_name))
+  if os.path.exists(in_frames):
+    return os.path.abspath(in_frames)
+
+  # Fallback to given path string
+  return os.path.abspath(frame_name)
+
 
 def main():
-    audio_file, json_file = find_inputs()
-    frames_dir = "frames"
-    fps = 30.0
+  # 1. Locate the JSON timing file
+  json_path = find_file_by_extension("json")
+  if not json_path:
+    print("Error: No JSON file found in root or subfolders!")
+    sys.exit(1)
+  print(f"--> Found JSON data file: {json_path}")
 
-    with open(json_file, 'r') as f:
-        segments = json.load(f)
+  # 2. Locate the MP3 audio file
+  mp3_path = find_file_by_extension("mp3")
+  if mp3_path:
+    print(f"--> Found MP3 audio file: {mp3_path}")
+  else:
+    print("--> Warning: No MP3 audio file found. Generating silent video.")
 
-    if not segments: sys.exit("ERROR: JSON segments list is empty.")
+  # 3. Read frame timing data
+  with open(json_path, "r", encoding="utf-8") as f:
+    frame_data = json.load(f)
 
-    audio_duration = get_audio_duration(audio_file)
-    print(f"Audio Duration: {audio_duration:.3f}s")
+  if not isinstance(frame_data, list) or not frame_data:
+    print("Error: JSON file must contain a non-empty array of frame entries!")
+    sys.exit(1)
 
-    # 1. PREPARE THE FRAME SCHEDULE
-    # We figure out exactly how many frames every single image gets.
-    schedule = []
-    cumulative_frames = 0
+  # Sort timing entries chronologically by start time
+  frame_data.sort(key=lambda x: x.get("start", 0))
 
-    for seg in segments:
-        target_frame = round(seg["end"] * fps)
-        count = target_frame - cumulative_frames
-        if count > 0:
-            schedule.append((seg["frame"], count))
-            cumulative_frames = target_frame
+  # 4. Generate FFmpeg concat manifest
+  concat_file = "concat_list.txt"
+  total_duration = 0
 
-    # Pad the end to match the exact audio length
-    required_frames = math.ceil(audio_duration * fps)
-    if cumulative_frames < required_frames:
-        padding = required_frames - cumulative_frames
-        schedule.append((segments[-1]["frame"], padding))
-        cumulative_frames = required_frames
+  with open(concat_file, "w", encoding="utf-8") as f:
+    for item in frame_data:
+      frame_file = item["frame"]
+      start = item["start"]
+      end = item["end"]
+      duration = max(0, end - start)
+      total_duration = max(total_duration, end)
 
-    print(f"Total precise frames to render: {cumulative_frames} frames at {fps} FPS")
+      img_path = resolve_frame_path(frame_file)
+      if not os.path.exists(img_path):
+        print(f"Warning: Could not locate frame image at: {img_path}")
 
-    # 2. DETERMINE RESOLUTION FROM THE FIRST IMAGE
-    first_frame_path = os.path.join(frames_dir, segments[0]["frame"])
-    with Image.open(first_frame_path) as img:
-        width, height = img.size
-        # Hardware decoders (phones/social media) require EVEN dimensions (divisible by 2)
-        width = width if width % 2 == 0 else width - 1
-        height = height if height % 2 == 0 else height - 1
+      # Format path safely for FFmpeg
+      safe_path = img_path.replace("'", "'\\''")
+      f.write(f"file '{safe_path}'\n")
+      f.write(f"duration {duration:.6f}\n")
 
-    print(f"Video resolution set to: {width}x{height}")
+    # FFmpeg concat demuxer requires repeating the last file entry
+    last_img_path = resolve_frame_path(frame_data[-1]["frame"])
+    safe_path = last_img_path.replace("'", "'\\''")
+    f.write(f"file '{safe_path}'\n")
 
-    # 3. SET UP FFMPEG TO RECEIVE RAW PIXELS VIA PIPE
-    cmd = [
-        "ffmpeg", "-y",
-        # Input 1: Raw video from the pipeline (stdin)
-        "-f", "rawvideo",
-        "-vcodec", "rawvideo",
-        "-s", f"{width}x{height}",
-        "-pix_fmt", "rgb24",
-        "-r", str(fps),
-        "-i", "-", 
-        # Input 2: The Audio file
-        "-i", audio_file,
-        # Video encoding settings (Strict CFR)
-        "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "18",
-        "-pix_fmt", "yuv420p",
-        # Audio encoding settings
-        "-c:a", "aac",
-        "-b:a", "192k",
-        "-shortest",
-        # Output
-        "output_hq.mp4"
-    ]
+  print(
+      f"--> Calculated {len(frame_data)} keyframes across {total_duration:.2f}"
+      " seconds."
+  )
 
-    print("Starting FFmpeg render pipe...")
-    
-    # Open FFmpeg process, exposing its standard input to Python
-    process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+  # 5. Build FFmpeg command for strict 30 FPS rendering
+  output_video = "output_hq.mp4"
+  cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_file]
 
-    try:
-        # 4. STREAM IMAGES DIRECTLY INTO FFMPEG'S MEMORY
-        frames_written = 0
-        for frame_name, count in schedule:
-            img_path = os.path.join(frames_dir, frame_name)
-            
-            # Open, force correct size, and convert to raw RGB data
-            with Image.open(img_path) as img:
-                img = img.convert("RGB")
-                if img.size != (width, height):
-                    img = img.resize((width, height), Image.Resampling.LANCZOS)
-                
-                raw_bytes = img.tobytes()
+  if mp3_path:
+    cmd.extend(["-i", mp3_path])
 
-            # Write the exact number of frames required directly to FFmpeg
-            for _ in range(count):
-                process.stdin.write(raw_bytes)
-                frames_written += 1
-                
-        # Close the pipe, letting FFmpeg know the video is done
-        process.stdin.close()
-        process.wait()
+  # Video flags:
+  # -vf "fps=30,format=yuv420p": Converts dynamic timings into a strict 30 FPS Constant Frame Rate (CFR)
+  # -c:v libx264 -crf 18: High quality H.264 video encoding
+  cmd.extend([
+      "-vf",
+      "fps=30,format=yuv420p",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "medium",
+      "-crf",
+      "18",
+      "-r",
+      "30",
+  ])
 
-    except BrokenPipeError:
-        # If FFmpeg crashed early, it will close the pipe
-        pass
+  if mp3_path:
+    cmd.extend(["-c:a", "aac", "-b:a", "192k", "-shortest"])
 
-    if process.returncode != 0:
-        stderr_output = process.stderr.read().decode('utf-8')
-        sys.exit(f"\nFFMPEG ERROR:\n{stderr_output}")
+  cmd.append(output_video)
 
-    print(f"\nSUCCESS! Rendered exactly {frames_written} frames to output_hq.mp4")
+  # 6. Run FFmpeg command
+  print("--> Rendering final MP4 video...")
+  try:
+    subprocess.run(cmd, check=True)
+    print(f"--> Render complete! File saved as {output_video}")
+  except subprocess.CalledProcessError as e:
+    print(f"Error during video generation: {e}")
+    sys.exit(1)
+  finally:
+    # Clean up temporary manifest
+    if os.path.exists(concat_file):
+      os.remove(concat_file)
+
 
 if __name__ == "__main__":
-    main()
+  main(
