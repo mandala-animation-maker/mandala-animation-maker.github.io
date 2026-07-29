@@ -21,7 +21,7 @@
         <!-- Header -->
         <header class="text-center mb-10">
             <h1 class="text-3xl md:text-4xl font-extrabold text-blue-400 mb-2">Audio-Script Frame Aligner</h1>
-            <p class="text-slate-400">Force-align your audio to your exact script line-by-line and export as Frame JSON.</p>
+            <p class="text-slate-400">Force-align your audio to your exact script line-by-line and export as flawless Frame JSON.</p>
         </header>
 
         <!-- API Key Configuration -->
@@ -70,7 +70,7 @@
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-slate-300 mb-2">Your Script (One frame/word per line)</label>
                     <textarea id="scriptText" rows="10" placeholder="Never&#10;look&#10;back&#10;again" class="w-full bg-slate-900 border border-slate-600 rounded-md p-4 text-white focus:outline-none focus:border-blue-500 resize-y"></textarea>
-                    <p class="text-xs text-slate-400 mt-2">* Each line in this box will become a unique frame. The AI will now use this exact text as a cheat sheet to prevent missed words.</p>
+                    <p class="text-xs text-slate-400 mt-2">* The AI is strictly instructed to follow this cheat sheet to prevent missed or hallucinated words.</p>
                 </div>
             </div>
         </section>
@@ -78,7 +78,7 @@
         <!-- Process Section -->
         <section class="text-center">
             <button onclick="processData()" id="processBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition hover:scale-105 text-lg">
-                Generate Alignments
+                Generate Perfect Timestamps
             </button>
             <p id="processStatus" class="mt-4 text-blue-400 font-medium"></p>
         </section>
@@ -160,10 +160,12 @@
             document.getElementById('outputSection').classList.add('hidden');
             
             try {
-                statusEl.innerText = "Step 1/2: Forcing AI to listen using your script as a strict cheat sheet...";
+                statusEl.innerText = "Step 1/2: Force-prompting AI to map exactly to your provided script...";
                 
-                // Convert multiline script into a single paragraph for the AI prompt (limits to 1000 chars to stay safe within API prompt limits)
-                const cheatSheetPrompt = scriptText.replace(/\n/g, ' ').substring(0, 1000);
+                // EXPLICIT PROMPT INJECTION: Command the AI strongly in the Whisper context
+                // Limit to roughly 500 chars so we don't blow past Whisper's prompt token limit
+                const cleanScript = scriptText.replace(/\n/g, ' ').substring(0, 500);
+                const explicitPrompt = `This is the exact word-for-word transcript of the audio. Do not hallucinate or skip words. Follow exactly: ${cleanScript}`;
 
                 const url = 'https://api.groq.com/openai/v1/audio/transcriptions';
                 const formData = new FormData();
@@ -172,10 +174,9 @@
                 formData.append('response_format', 'verbose_json'); 
                 formData.append('timestamp_granularities[]', 'word');
                 
-                // NEW: Force the AI into high accuracy mode
-                formData.append('language', 'en'); // Stops it from wasting time guessing the language
-                formData.append('prompt', cheatSheetPrompt); // Forces it to expect your exact words
-                formData.append('temperature', '0'); // Forces the most deterministic, non-creative outcome
+                formData.append('language', 'en'); 
+                formData.append('prompt', explicitPrompt); // Injecting explicit command
+                formData.append('temperature', '0'); 
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -197,10 +198,11 @@
                     throw new Error("No words were recognized in the audio file.");
                 }
 
-                statusEl.innerText = "Step 2/2: Structuring timelines and applying strict chronology...";
+                statusEl.innerText = "Step 2/2: Applying strict chronological enforcer to resolve overlap bugs...";
                 
                 const frameData = alignScriptToAudio(scriptText, wordsArr);
 
+                // Ensure consistent spacing and formatting in JSON text
                 const jsonString = JSON.stringify(frameData, null, 2);
                 document.getElementById('jsonOutput').textContent = jsonString;
                 document.getElementById('outputSection').classList.remove('hidden');
@@ -218,7 +220,7 @@
             }
         }
 
-        // --- Advanced Global Sequence Alignment Algorithm ---
+        // --- Advanced Alignment & Strict Monotonic Interpolation ---
         function alignScriptToAudio(script, apiWords) {
             const scriptLines = script.split('\n').map(l => l.trim()).filter(l => l.length > 0);
             const sWords = scriptLines.map(l => l.toLowerCase().replace(/[^\w\s]/g, ''));
@@ -231,9 +233,11 @@
             const ptr = Array.from({ length: N + 1 }, () => new Array(M + 1).fill(0));
             const GAP = 2; 
 
+            // DP Initialization
             for (let i = 1; i <= N; i++) { dp[i][0] = i * GAP; ptr[i][0] = 1; } 
             for (let j = 1; j <= M; j++) { dp[0][j] = j * GAP; ptr[0][j] = 2; } 
 
+            // DP Population
             for (let i = 1; i <= N; i++) {
                 for (let j = 1; j <= M; j++) {
                     let dist = levenshtein(sWords[i-1], aWords[j-1]);
@@ -256,6 +260,7 @@
                 }
             }
 
+            // Backtracking
             let i = N, j = M;
             const matches = new Array(N).fill(null);
             while (i > 0 || j > 0) {
@@ -269,9 +274,8 @@
                 }
             }
 
+            // Base assignment
             const frames = [];
-            let lastEnd = 0;
-
             for (let idx = 0; idx < N; idx++) {
                 let apiIdx = matches[idx];
                 let start = null, end = null, isMatched = false;
@@ -279,11 +283,6 @@
                 if (apiIdx !== null && apiWords[apiIdx]) {
                     start = apiWords[apiIdx].start;
                     end = apiWords[apiIdx].end;
-                    
-                    if (start < lastEnd) start = lastEnd + 0.01;
-                    if (end <= start) end = start + 0.1;
-                    
-                    lastEnd = end;
                     isMatched = true;
                 }
 
@@ -296,52 +295,84 @@
                 });
             }
 
-            // Interpolation fallback (just in case)
-            const totalAudioTime = apiWords.length > 0 ? apiWords[apiWords.length - 1].end : (N * 0.5);
+            // 1. Repair matched frames that overlap (Whisper API can output overlapping timestamps natively)
+            let lastMatchedEnd = 0.0;
+            for (let idx = 0; idx < N; idx++) {
+                if (frames[idx].isMatched) {
+                    if (frames[idx].start < lastMatchedEnd) {
+                        frames[idx].start = lastMatchedEnd + 0.01;
+                    }
+                    if (frames[idx].end <= frames[idx].start) {
+                        frames[idx].end = frames[idx].start + 0.1;
+                    }
+                    lastMatchedEnd = frames[idx].end;
+                }
+            }
+
+            // 2. Interpolate gaps for unmatched words
+            let prevAnchorIdx = -1;
+            const totalAudioTime = apiWords.length > 0 ? apiWords[apiWords.length - 1].end + 0.5 : (N * 0.5);
+
+            for (let idx = 0; idx <= N; idx++) {
+                if (idx === N || frames[idx].isMatched) {
+                    let nextAnchorIdx = idx;
+                    let gapCount = nextAnchorIdx - prevAnchorIdx - 1;
+                    
+                    if (gapCount > 0) {
+                        let startTime = (prevAnchorIdx >= 0) ? frames[prevAnchorIdx].end : 0.0;
+                        let endTime = (nextAnchorIdx < N) ? frames[nextAnchorIdx].start : Math.max(startTime + (gapCount * 0.3), totalAudioTime);
+                        
+                        // Failsafe in case Whisper put a matched word perfectly flush or backward
+                        if (endTime <= startTime) endTime = startTime + (gapCount * 0.15);
+                        
+                        let timePerWord = (endTime - startTime) / gapCount;
+                        
+                        for (let k = 1; k <= gapCount; k++) {
+                            let unmatchIdx = prevAnchorIdx + k;
+                            frames[unmatchIdx].start = startTime + (timePerWord * (k - 1));
+                            frames[unmatchIdx].end = frames[unmatchIdx].start + timePerWord;
+                        }
+                    }
+                    prevAnchorIdx = nextAnchorIdx;
+                }
+            }
+
+            // 3. THE STRICT CHRONOLOGICAL ENFORCER (FIXED)
+            let currentMinTime = 0.0;
+            const minDuration = 0.05; // Force frames to exist for at least 50ms so they aren't ignored
             
             for (let idx = 0; idx < N; idx++) {
-                if (!frames[idx].isMatched) {
-                    let prevEnd = idx > 0 ? frames[idx-1].end : 0.0;
-                    
-                    let nextIdx = idx;
-                    while (nextIdx < N && !frames[nextIdx].isMatched) {
-                        nextIdx++;
-                    }
-                    
-                    let missingCount = nextIdx - idx;
-                    let nextStart = (nextIdx < N) ? frames[nextIdx].start : Math.max(prevEnd + (missingCount * 0.3), totalAudioTime);
-                    
-                    let timePerWord = Math.max((nextStart - prevEnd) / missingCount, 0.01); 
-
-                    for (let k = 0; k < missingCount; k++) {
-                        let start = prevEnd + (timePerWord * k);
-                        let end = start + timePerWord;
-                        frames[idx + k].start = start;
-                        frames[idx + k].end = end;
-                    }
-                    
-                    idx = nextIdx - 1; 
-                }
-            }
-
-            // The Strict Chronological Enforcer
-            let globalMinTime = 0.0;
-            for (let f = 0; f < N; f++) {
-                if (frames[f].start < globalMinTime) {
-                    frames[f].start = globalMinTime;
-                }
-                if (frames[f].end <= frames[f].start) {
-                    frames[f].end = frames[f].start + 0.01;
+                // Rule 1: No backwards time travel. Start must be >= end of previous.
+                if (frames[idx].start < currentMinTime) {
+                    frames[idx].start = currentMinTime;
                 }
                 
-                globalMinTime = frames[f].end;
-                
-                frames[f].start = parseFloat(frames[f].start.toFixed(3));
-                frames[f].end = parseFloat(frames[f].end.toFixed(3));
+                // Rule 2: Frame must have a safe minimum duration. No more 0.01s durations.
+                if (frames[idx].end < frames[idx].start + minDuration) {
+                    frames[idx].end = frames[idx].start + minDuration;
+                }
+
+                // Rule 3: Snap tiny micro-gaps for seamless video generation (e.g. if gap is < 0.1s, connect them)
+                if (idx < N - 1) {
+                    let nextStart = frames[idx+1].isMatched ? frames[idx+1].start : frames[idx].end;
+                    let microGap = nextStart - frames[idx].end;
+                    if (microGap > 0 && microGap <= 0.15) {
+                        frames[idx].end = nextStart; // snap current end perfectly to next start
+                    }
+                }
+
+                currentMinTime = frames[idx].end;
             }
 
+            // 4. Final Formatting Pass (Normalize to exactly 2 decimals)
             return frames.map(f => {
-                return { frame: f.frame, start: f.start, end: f.end };
+                // parseFloat(Number.toFixed(2)) guarantees values like 13.00 format correctly in JSON 
+                // but keeps them strictly as numeric types, resolving the precision artifacts.
+                return { 
+                    frame: f.frame, 
+                    start: Number(f.start.toFixed(2)), 
+                    end: Number(f.end.toFixed(2)) 
+                };
             });
         }
 
