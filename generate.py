@@ -39,18 +39,6 @@ def main():
     # Safety requirement: process left-to-right flawless sequential ordering.
     sequence.sort(key=lambda x: float(x['start']))
 
-    # Generate a black frame for the very first silence natively.
-    black_frame_name = "black_base_frame.png"
-    black_frame_path = os.path.join(frames_dir, black_frame_name)
-    if not os.path.exists(black_frame_path):
-        print("Generating initial black frame for the beginning silence...")
-        first_frame_path = os.path.join(frames_dir, sequence[0]['frame'])
-        subprocess.run([
-            "ffmpeg", "-y", "-i", first_frame_path, 
-            "-vf", "drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill", 
-            "-frames:v", "1", black_frame_path
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
     concat_lines = ["ffconcat version 1.0"]
 
     for i, item in enumerate(sequence):
@@ -58,7 +46,8 @@ def main():
 
         if i == 0:
             if start > 0:
-                concat_lines.append(f"file '{black_frame_name}'")
+                # Use the first frame for the initial silence period instead of a black frame
+                concat_lines.append(f"file '{item['frame']}'")
                 concat_lines.append(f"duration {start:.6f}") 
         else:
             prev_start = float(sequence[i-1]['start'])
