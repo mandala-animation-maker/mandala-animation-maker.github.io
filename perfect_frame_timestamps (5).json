@@ -1,0 +1,302 @@
+[
+  {
+    "frame": "frame_001.png",
+    "start": 0,
+    "end": 0.38
+  },
+  {
+    "frame": "frame_002.png",
+    "start": 0.38,
+    "end": 0.86
+  },
+  {
+    "frame": "frame_003.png",
+    "start": 0.86,
+    "end": 1.06
+  },
+  {
+    "frame": "frame_004.png",
+    "start": 1.06,
+    "end": 2.12
+  },
+  {
+    "frame": "frame_005.png",
+    "start": 2.12,
+    "end": 2.18
+  },
+  {
+    "frame": "frame_006.png",
+    "start": 2.18,
+    "end": 2.58
+  },
+  {
+    "frame": "frame_007.png",
+    "start": 2.58,
+    "end": 3
+  },
+  {
+    "frame": "frame_008.png",
+    "start": 3,
+    "end": 3.16
+  },
+  {
+    "frame": "frame_009.png",
+    "start": 3.16,
+    "end": 3.34
+  },
+  {
+    "frame": "frame_010.png",
+    "start": 3.34,
+    "end": 3.52
+  },
+  {
+    "frame": "frame_011.png",
+    "start": 3.52,
+    "end": 3.82
+  },
+  {
+    "frame": "frame_012.png",
+    "start": 3.82,
+    "end": 4
+  },
+  {
+    "frame": "frame_013.png",
+    "start": 4,
+    "end": 4.56
+  },
+  {
+    "frame": "frame_014.png",
+    "start": 4.56,
+    "end": 5.04
+  },
+  {
+    "frame": "frame_015.png",
+    "start": 5.04,
+    "end": 5.22
+  },
+  {
+    "frame": "frame_016.png",
+    "start": 5.22,
+    "end": 5.36
+  },
+  {
+    "frame": "frame_017.png",
+    "start": 5.36,
+    "end": 5.72
+  },
+  {
+    "frame": "frame_018.png",
+    "start": 5.72,
+    "end": 5.94
+  },
+  {
+    "frame": "frame_019.png",
+    "start": 5.94,
+    "end": 6.14
+  },
+  {
+    "frame": "frame_020.png",
+    "start": 6.14,
+    "end": 6.6
+  },
+  {
+    "frame": "frame_021.png",
+    "start": 6.6,
+    "end": 7.12
+  },
+  {
+    "frame": "frame_022.png",
+    "start": 7.12,
+    "end": 7.44
+  },
+  {
+    "frame": "frame_023.png",
+    "start": 7.44,
+    "end": 7.64
+  },
+  {
+    "frame": "frame_024.png",
+    "start": 7.64,
+    "end": 8.72
+  },
+  {
+    "frame": "frame_025.png",
+    "start": 8.72,
+    "end": 8.92
+  },
+  {
+    "frame": "frame_026.png",
+    "start": 8.92,
+    "end": 8.97
+  },
+  {
+    "frame": "frame_027.png",
+    "start": 8.97,
+    "end": 9.38
+  },
+  {
+    "frame": "frame_028.png",
+    "start": 9.38,
+    "end": 9.78
+  },
+  {
+    "frame": "frame_029.png",
+    "start": 9.78,
+    "end": 10.06
+  },
+  {
+    "frame": "frame_030.png",
+    "start": 10.06,
+    "end": 10.92
+  },
+  {
+    "frame": "frame_031.png",
+    "start": 10.92,
+    "end": 11
+  },
+  {
+    "frame": "frame_032.png",
+    "start": 11,
+    "end": 11.3
+  },
+  {
+    "frame": "frame_033.png",
+    "start": 11.3,
+    "end": 11.54
+  },
+  {
+    "frame": "frame_034.png",
+    "start": 11.54,
+    "end": 11.76
+  },
+  {
+    "frame": "frame_035.png",
+    "start": 11.76,
+    "end": 12.22
+  },
+  {
+    "frame": "frame_036.png",
+    "start": 12.22,
+    "end": 12.78
+  },
+  {
+    "frame": "frame_037.png",
+    "start": 12.78,
+    "end": 12.88
+  },
+  {
+    "frame": "frame_038.png",
+    "start": 12.88,
+    "end": 13.18
+  },
+  {
+    "frame": "frame_039.png",
+    "start": 13.18,
+    "end": 13.38
+  },
+  {
+    "frame": "frame_040.png",
+    "start": 13.38,
+    "end": 13.5
+  },
+  {
+    "frame": "frame_041.png",
+    "start": 13.5,
+    "end": 14.02
+  },
+  {
+    "frame": "frame_042.png",
+    "start": 14.02,
+    "end": 14.14
+  },
+  {
+    "frame": "frame_043.png",
+    "start": 14.14,
+    "end": 14.34
+  },
+  {
+    "frame": "frame_044.png",
+    "start": 14.34,
+    "end": 14.54
+  },
+  {
+    "frame": "frame_045.png",
+    "start": 14.54,
+    "end": 14.7
+  },
+  {
+    "frame": "frame_046.png",
+    "start": 14.7,
+    "end": 14.82
+  },
+  {
+    "frame": "frame_047.png",
+    "start": 14.82,
+    "end": 15
+  },
+  {
+    "frame": "frame_048.png",
+    "start": 15,
+    "end": 15.66
+  },
+  {
+    "frame": "frame_049.png",
+    "start": 16.44,
+    "end": 17.08
+  },
+  {
+    "frame": "frame_050.png",
+    "start": 17.08,
+    "end": 17.56
+  },
+  {
+    "frame": "frame_051.png",
+    "start": 17.56,
+    "end": 18.16
+  },
+  {
+    "frame": "frame_052.png",
+    "start": 18.16,
+    "end": 18.7
+  },
+  {
+    "frame": "frame_053.png",
+    "start": 18.7,
+    "end": 18.78
+  },
+  {
+    "frame": "frame_054.png",
+    "start": 18.78,
+    "end": 19.32
+  },
+  {
+    "frame": "frame_055.png",
+    "start": 19.32,
+    "end": 20.34
+  },
+  {
+    "frame": "frame_056.png",
+    "start": 20.34,
+    "end": 20.76
+  },
+  {
+    "frame": "frame_057.png",
+    "start": 20.76,
+    "end": 21.36
+  },
+  {
+    "frame": "frame_058.png",
+    "start": 21.36,
+    "end": 21.88
+  },
+  {
+    "frame": "frame_059.png",
+    "start": 21.88,
+    "end": 21.98
+  },
+  {
+    "frame": "frame_060.png",
+    "start": 21.98,
+    "end": 22.62
+  }
+]
