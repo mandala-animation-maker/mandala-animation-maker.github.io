@@ -1,0 +1,412 @@
+[
+  {
+    "frame": "frame_001.png",
+    "start": 0.14,
+    "end": 0.32
+  },
+  {
+    "frame": "frame_002.png",
+    "start": 0.68,
+    "end": 1.06
+  },
+  {
+    "frame": "frame_003.png",
+    "start": 1.06,
+    "end": 1.32
+  },
+  {
+    "frame": "frame_004.png",
+    "start": 1.32,
+    "end": 1.78
+  },
+  {
+    "frame": "frame_005.png",
+    "start": 2.16,
+    "end": 3.14
+  },
+  {
+    "frame": "frame_006.png",
+    "start": 3.14,
+    "end": 3.54
+  },
+  {
+    "frame": "frame_007.png",
+    "start": 3.78,
+    "end": 4.22
+  },
+  {
+    "frame": "frame_008.png",
+    "start": 5.04,
+    "end": 5.18
+  },
+  {
+    "frame": "frame_009.png",
+    "start": 5.18,
+    "end": 5.52
+  },
+  {
+    "frame": "frame_010.png",
+    "start": 5.52,
+    "end": 6.24
+  },
+  {
+    "frame": "frame_011.png",
+    "start": 6.6,
+    "end": 6.7
+  },
+  {
+    "frame": "frame_012.png",
+    "start": 6.7,
+    "end": 7.2
+  },
+  {
+    "frame": "frame_013.png",
+    "start": 7.2,
+    "end": 7.8
+  },
+  {
+    "frame": "frame_014.png",
+    "start": 7.8,
+    "end": 8.32
+  },
+  {
+    "frame": "frame_015.png",
+    "start": 8.32,
+    "end": 8.72
+  },
+  {
+    "frame": "frame_016.png",
+    "start": 8.72,
+    "end": 9.58
+  },
+  {
+    "frame": "frame_017.png",
+    "start": 10.4,
+    "end": 10.84
+  },
+  {
+    "frame": "frame_018.png",
+    "start": 10.84,
+    "end": 11.16
+  },
+  {
+    "frame": "frame_019.png",
+    "start": 11.16,
+    "end": 11.48
+  },
+  {
+    "frame": "frame_020.png",
+    "start": 11.48,
+    "end": 12.84
+  },
+  {
+    "frame": "frame_021.png",
+    "start": 12.84,
+    "end": 13.64
+  },
+  {
+    "frame": "frame_022.png",
+    "start": 13.64,
+    "end": 13.76
+  },
+  {
+    "frame": "frame_023.png",
+    "start": 13.76,
+    "end": 14.02
+  },
+  {
+    "frame": "frame_024.png",
+    "start": 14.02,
+    "end": 14.56
+  },
+  {
+    "frame": "frame_025.png",
+    "start": 14.56,
+    "end": 14.94
+  },
+  {
+    "frame": "frame_026.png",
+    "start": 14.94,
+    "end": 15.42
+  },
+  {
+    "frame": "frame_027.png",
+    "start": 15.42,
+    "end": 16.1
+  },
+  {
+    "frame": "frame_028.png",
+    "start": 16.86,
+    "end": 17.46
+  },
+  {
+    "frame": "frame_029.png",
+    "start": 18.08,
+    "end": 18.2
+  },
+  {
+    "frame": "frame_030.png",
+    "start": 18.2,
+    "end": 18.72
+  },
+  {
+    "frame": "frame_031.png",
+    "start": 19.16,
+    "end": 19.52
+  },
+  {
+    "frame": "frame_032.png",
+    "start": 19.52,
+    "end": 20
+  },
+  {
+    "frame": "frame_033.png",
+    "start": 20.2,
+    "end": 20.38
+  },
+  {
+    "frame": "frame_034.png",
+    "start": 20.38,
+    "end": 20.62
+  },
+  {
+    "frame": "frame_035.png",
+    "start": 20.62,
+    "end": 20.92
+  },
+  {
+    "frame": "frame_036.png",
+    "start": 20.92,
+    "end": 21.92
+  },
+  {
+    "frame": "frame_037.png",
+    "start": 21.92,
+    "end": 22.02
+  },
+  {
+    "frame": "frame_038.png",
+    "start": 22.02,
+    "end": 23.08
+  },
+  {
+    "frame": "frame_039.png",
+    "start": 23.08,
+    "end": 23.74
+  },
+  {
+    "frame": "frame_040.png",
+    "start": 23.74,
+    "end": 24.3
+  },
+  {
+    "frame": "frame_041.png",
+    "start": 24.68,
+    "end": 25.26
+  },
+  {
+    "frame": "frame_042.png",
+    "start": 25.26,
+    "end": 26.34
+  },
+  {
+    "frame": "frame_043.png",
+    "start": 26.34,
+    "end": 26.7
+  },
+  {
+    "frame": "frame_044.png",
+    "start": 26.7,
+    "end": 27.14
+  },
+  {
+    "frame": "frame_045.png",
+    "start": 27.14,
+    "end": 27.62
+  },
+  {
+    "frame": "frame_046.png",
+    "start": 27.62,
+    "end": 27.96
+  },
+  {
+    "frame": "frame_047.png",
+    "start": 27.96,
+    "end": 28.32
+  },
+  {
+    "frame": "frame_048.png",
+    "start": 28.32,
+    "end": 28.64
+  },
+  {
+    "frame": "frame_049.png",
+    "start": 28.64,
+    "end": 29.6
+  },
+  {
+    "frame": "frame_050.png",
+    "start": 29.98,
+    "end": 30.03
+  },
+  {
+    "frame": "frame_051.png",
+    "start": 30.03,
+    "end": 30.08
+  },
+  {
+    "frame": "frame_052.png",
+    "start": 30.08,
+    "end": 30.13
+  },
+  {
+    "frame": "frame_053.png",
+    "start": 30.13,
+    "end": 30.18
+  },
+  {
+    "frame": "frame_054.png",
+    "start": 30.18,
+    "end": 30.23
+  },
+  {
+    "frame": "frame_055.png",
+    "start": 30.23,
+    "end": 30.28
+  },
+  {
+    "frame": "frame_056.png",
+    "start": 30.28,
+    "end": 32.94
+  },
+  {
+    "frame": "frame_057.png",
+    "start": 32.94,
+    "end": 35.78
+  },
+  {
+    "frame": "frame_058.png",
+    "start": 35.78,
+    "end": 36.38
+  },
+  {
+    "frame": "frame_059.png",
+    "start": 36.38,
+    "end": 37.2
+  },
+  {
+    "frame": "frame_060.png",
+    "start": 37.2,
+    "end": 37.62
+  },
+  {
+    "frame": "frame_061.png",
+    "start": 37.82,
+    "end": 38.18
+  },
+  {
+    "frame": "frame_062.png",
+    "start": 38.4,
+    "end": 38.76
+  },
+  {
+    "frame": "frame_063.png",
+    "start": 38.76,
+    "end": 39.78
+  },
+  {
+    "frame": "frame_064.png",
+    "start": 40.04,
+    "end": 41.1
+  },
+  {
+    "frame": "frame_065.png",
+    "start": 41.34,
+    "end": 41.48
+  },
+  {
+    "frame": "frame_066.png",
+    "start": 41.64,
+    "end": 42.02
+  },
+  {
+    "frame": "frame_067.png",
+    "start": 42.26,
+    "end": 43.32
+  },
+  {
+    "frame": "frame_068.png",
+    "start": 43.32,
+    "end": 43.94
+  },
+  {
+    "frame": "frame_069.png",
+    "start": 43.94,
+    "end": 44.2
+  },
+  {
+    "frame": "frame_070.png",
+    "start": 44.2,
+    "end": 44.68
+  },
+  {
+    "frame": "frame_071.png",
+    "start": 44.68,
+    "end": 45
+  },
+  {
+    "frame": "frame_072.png",
+    "start": 45,
+    "end": 46.24
+  },
+  {
+    "frame": "frame_073.png",
+    "start": 46.24,
+    "end": 46.46
+  },
+  {
+    "frame": "frame_074.png",
+    "start": 46.9,
+    "end": 47.46
+  },
+  {
+    "frame": "frame_075.png",
+    "start": 47.74,
+    "end": 47.88
+  },
+  {
+    "frame": "frame_076.png",
+    "start": 47.88,
+    "end": 48.22
+  },
+  {
+    "frame": "frame_077.png",
+    "start": 48.42,
+    "end": 48.72
+  },
+  {
+    "frame": "frame_078.png",
+    "start": 48.72,
+    "end": 49.58
+  },
+  {
+    "frame": "frame_079.png",
+    "start": 49.58,
+    "end": 49.78
+  },
+  {
+    "frame": "frame_080.png",
+    "start": 49.94,
+    "end": 50.36
+  },
+  {
+    "frame": "frame_081.png",
+    "start": 50.68,
+    "end": 50.96
+  },
+  {
+    "frame": "frame_082.png",
+    "start": 51.14,
+    "end": 59.66
+  }
+]
