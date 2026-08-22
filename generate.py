@@ -5,76 +5,62 @@ import sys
 import glob
 
 def main():
-    frames_dir = 'frames' # The folder containing your PNGs
+    frames_dir = 'frames'
 
-    # 1. Check if the frames folder exists
     if not os.path.exists(frames_dir):
         print("Error: Make sure a 'frames' folder exists in this directory.")
         sys.exit(1)
 
-    # 2. Dynamically search for any JSON file in the directory
     json_files = glob.glob('*.json')
     if not json_files:
         print("Error: No JSON file found in this directory.")
         sys.exit(1)
         
     json_file = json_files[0]
-    print(f"JSON sequence file detected: {json_file}")
 
-    # 3. Dynamically search for audio files
     audio_file = None
     for ext in ['*.mp3', '*.wav', '*.m4a']:
         found = glob.glob(ext)
         if found:
             audio_file = os.path.abspath(found[0])
-            print(f"Audio file detected: {found[0]}")
             break
-            
-    if not audio_file:
-        print("No audio file found (.mp3, .wav, or .m4a). Generating silent video...")
 
     with open(json_file, 'r') as f:
         sequence = json.load(f)
 
-    # Safety requirement: process left-to-right flawless sequential ordering.
+    # Ensure strictly sorted sequence
     sequence.sort(key=lambda x: float(x['start']))
 
     concat_lines = ["ffconcat version 1.0"]
 
+    # Explicit duration building
     for i, item in enumerate(sequence):
         start = float(item['start'])
-
-        if i == 0:
-            if start > 0:
-                # Use the first frame for the initial silence period instead of a black frame
-                concat_lines.append(f"file '{item['frame']}'")
-                concat_lines.append(f"duration {start:.6f}") 
-        else:
-            prev_start = float(sequence[i-1]['start'])
-            duration = start - prev_start
-            if duration > 0:
-                concat_lines.append(f"file '{sequence[i-1]['frame']}'")
-                concat_lines.append(f"duration {duration:.6f}")
-
-    last_item = sequence[-1]
-    concat_lines.append(f"file '{last_item['frame']}'")
-    
-    if audio_file:
-        concat_lines.append("duration 9999.000000")
-    else:
-        final_duration = max(float(last_item['end']) - float(last_item['start']), 0.1)
-        concat_lines.append(f"duration {final_duration:.6f}")
+        end = float(item['end']) if 'end' in item else (float(sequence[i+1]['start']) if i+1 < len(sequence) else start + 1.0)
         
-    concat_lines.append(f"file '{last_item['frame']}'")
+        duration = max(end - start, 0.033) # Avoid zero or negative durations
+        
+        concat_lines.append(f"file '{item['frame']}'")
+        concat_lines.append(f"duration {duration:.6f}")
+
+    # Concat file rule requires repeating the last file entry at the end
+    if sequence:
+        concat_lines.append(f"file '{sequence[-1]['frame']}'")
 
     concat_file_path = os.path.join(frames_dir, 'input.txt')
     with open(concat_file_path, 'w') as f:
         f.write("\n".join(concat_lines) + "\n")
 
-    print("Generating ultra-HQ MP4... please wait.")
     output_video = "output_hq.mp4"
     
-    cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", "input.txt"]
+    # Flags to force immediate sync lock
+    cmd = [
+        "ffmpeg", "-y",
+        "-fflags", "+genpts", # Regenerate missing timestamps
+        "-f", "concat",
+        "-safe", "0",
+        "-i", "input.txt"
+    ]
     
     if audio_file:
         cmd.extend(["-i", audio_file])
@@ -88,7 +74,13 @@ def main():
     ])
     
     if audio_file:
-        cmd.extend(["-c:a", "aac", "-b:a", "192k", "-shortest"])
+        # Use aresample to stretch/fill initial audio padding drift
+        cmd.extend([
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-af", "aresample=async=1:min_hard_comp=0.100000:first_pts=0",
+            "-shortest"
+        ])
 
     cmd.append(output_video)
 
@@ -96,7 +88,7 @@ def main():
 
     if result.returncode == 0:
         os.rename(os.path.join(frames_dir, output_video), output_video)
-        print(f"\nSUCCESS! Video mathematically perfectly generated without temporal timeline desync drifting!")
+        print("\nSUCCESS! Video generated with initial sync fixed.")
     else:
         print("\nFAILED. Check FFmpeg error logs above.")
 
