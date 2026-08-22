@@ -114,8 +114,35 @@ def get_media_duration(path):
 
 
 def build_concat_file(sequence, frames_dir):
+    """
+    --- Fix #6: quantize every frame boundary to whole output-frame ticks
+    (multiples of 1/FPS) using cumulative ("carry the remainder forward")
+    rounding, instead of writing raw fractional durations straight into
+    the ffconcat file.
+
+    Why this matters: the video filter chain runs at a fixed FPS (fps=30),
+    so ffmpeg has to round each file's 'duration' to a whole number of
+    output ticks internally regardless of what we write. If we hand it
+    durations like 0.15s (= 4.5 ticks at 30fps), that rounding happens
+    independently per-frame and the errors don't cancel out: consecutive
+    short frames can end up held for uneven numbers of ticks (e.g. 5 ticks
+    then 3 ticks, purely from +/-0.5-tick rounding noise), which looks like
+    frames playing at inconsistent, sometimes too-fast rates. Worse, when
+    several very short consecutive durations land unluckily, a frame's
+    rounded duration can round all the way down to zero ticks and vanish
+    from the output entirely.
+
+    The fix: compute each frame's *cumulative* end tick as
+    round(cumulative_seconds * FPS), then derive that frame's duration as
+    (this tick - previous tick) / FPS. Rounding error from one frame is
+    absorbed into the next frame's boundary instead of compounding, every
+    duration written out is an exact multiple of 1/FPS (so ffmpeg's
+    internal rounding becomes a no-op), and every frame is guaranteed at
+    least one tick so none can silently disappear.
+    """
     lines = ["ffconcat version 1.0"]
 
+    raw_durations = []
     for i, entry in enumerate(sequence):
         frame = entry["frame"]
         start = float(entry["start"])
@@ -131,8 +158,36 @@ def build_concat_file(sequence, frames_dir):
                   f"({duration:.6f}s); clamping to {MIN_FRAME_DURATION:.4f}s.")
             duration = MIN_FRAME_DURATION
 
-        lines.append(f"file '{frame}'")
-        lines.append(f"duration {duration:.6f}")
+        raw_durations.append(duration)
+
+    # Cumulative tick quantization.
+    cumulative_seconds = 0.0
+    prev_tick = 0
+    quantized_durations = []
+    bumped_frames = []
+    for i, duration in enumerate(raw_durations):
+        cumulative_seconds += duration
+        tick = round(cumulative_seconds * FPS)
+        if tick <= prev_tick:
+            # Rounded boundary didn't advance -- this frame would be
+            # invisible in the output. Force at least one tick instead of
+            # letting it silently disappear.
+            tick = prev_tick + 1
+            bumped_frames.append(sequence[i]["frame"])
+        quantized_durations.append((tick - prev_tick) / FPS)
+        prev_tick = tick
+
+    if bumped_frames:
+        preview = ", ".join(bumped_frames[:5])
+        more = f" (+{len(bumped_frames) - 5} more)" if len(bumped_frames) > 5 else ""
+        print(f"Note: {len(bumped_frames)} frame(s) had a duration that rounded "
+              f"to zero output ticks at {FPS}fps and were bumped up to one tick "
+              f"({MIN_FRAME_DURATION:.4f}s) so they still appear on-screen: "
+              f"{preview}{more}")
+
+    for entry, q_duration in zip(sequence, quantized_durations):
+        lines.append(f"file '{entry['frame']}'")
+        lines.append(f"duration {q_duration:.6f}")
 
     lines.append(f"file '{sequence[-1]['frame']}'")
 
