@@ -1,38 +1,128 @@
-name: Generate MP4 Video
+name: Generate Batch Videos
 
-# This allows you to trigger the workflow manually from the GitHub Actions tab
+# Trigger manually from the Actions tab. You just need ONE zip file
+# committed to the repo (e.g. at the root, named batch.zip) containing:
+#
+#   jobs/
+#     job_0001/
+#       frames/frame_0001.png, frame_0002.png, ...
+#       timing_0001.json
+#       audio_0001.mp3        (optional)
+#     job_0002/
+#       frames/...
+#       timing_0002.json
+#       audio_0002.mp3
+#     ...
+#
+# Folder names inside jobs/ can be anything (job_0001, myvideo, etc) --
+# the discover step just looks for any folder that has a frames/
+# subfolder with .png files and at least one .json file in it.
+#
+# You can rename this file however you like, and change zip_path below
+# (or set it as an input) if you don't want to hardcode "batch.zip".
+
 on:
   workflow_dispatch:
+    inputs:
+      zip_path:
+        description: 'Path in the repo to the zip file containing all jobs'
+        required: false
+        default: 'batch.zip'
 
 jobs:
-  build-video:
+  # ---------------------------------------------------------------------
+  # STAGE 1: unzip once, figure out how many videos are in the batch,
+  # and hand that list to the next job as a matrix.
+  # ---------------------------------------------------------------------
+  discover:
     runs-on: ubuntu-latest
-
+    outputs:
+      jobs_matrix: ${{ steps.find_jobs.outputs.jobs_matrix }}
     steps:
-      # 1. Grab your files from the repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. Install FFmpeg on the GitHub Server
-      - name: Install FFmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
-
-      # 3. Setup Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # 4. Run your Python script
-      - name: Run Video Generator
-        run: python generate.py
+      - name: Unzip batch upload
+        run: |
+          ZIP_PATH="${{ github.event.inputs.zip_path }}"
+          if [ ! -f "$ZIP_PATH" ]; then
+            echo "Error: zip file not found at '$ZIP_PATH'."
+            echo "Make sure you committed/uploaded it to the repo at that path."
+            exit 1
+          fi
+          mkdir -p jobs
+          unzip -q "$ZIP_PATH" -d extracted
+          # Support both "zip contains a top-level jobs/ folder" and
+          # "zip contains the job folders directly" -- whichever the
+          # phone zip app produced.
+          if [ -d "extracted/jobs" ]; then
+            cp -r extracted/jobs/. jobs/
+          else
+            cp -r extracted/. jobs/
+          fi
+          echo "Contents of jobs/:"
+          ls -la jobs/
 
-      # 5. Upload the finished MP4 so you can download it
+      - name: Discover valid jobs
+        id: find_jobs
+        run: |
+          MATRIX_JSON=$(python discover_jobs.py)
+          echo "jobs_matrix=$MATRIX_JSON" >> "$GITHUB_OUTPUT"
+
+      # Pass the unzipped jobs/ folder to the matrix jobs via an artifact,
+      # since each matrix job runs on a fresh runner with its own checkout.
+      - name: Upload extracted jobs for matrix jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: extracted-jobs
+          path: jobs/
+          retention-days: 1
+
+  # ---------------------------------------------------------------------
+  # STAGE 2: one parallel job per video. GitHub runs these concurrently
+  # (up to the account's parallel-job limit), so 10 videos render at
+  # roughly the same wall-clock time as 1, not 10x the time.
+  # ---------------------------------------------------------------------
+  build-video:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false   # one bad job shouldn't cancel the others
+      matrix:
+        job_name: ${{ fromJson(needs.discover.outputs.jobs_matrix) }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Download extracted jobs
+        uses: actions/download-artifact@v4
+        with:
+          name: extracted-jobs
+          path: jobs/
+
+      - name: Run Video Generator for ${{ matrix.job_name }}
+        run: |
+          python generate.py "jobs/${{ matrix.job_name }}" "output_${{ matrix.job_name }}.mp4"
+
       - name: Upload Video Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Generated-Video-HQ
-          path: output_hq.mp4
+          name: video-${{ matrix.job_name }}
+          path: output_${{ matrix.job_name }}.mp4
           retention-days: 7
