@@ -2,491 +2,491 @@
   {
     "frame": "frame_0001.png",
     "start": 0,
-    "end": 0.54
+    "end": 0.28
   },
   {
     "frame": "frame_0002.png",
-    "start": 0.54,
-    "end": 1.07
+    "start": 0.28,
+    "end": 0.62
   },
   {
     "frame": "frame_0003.png",
-    "start": 1.07,
-    "end": 1.61
+    "start": 0.62,
+    "end": 1.04
   },
   {
     "frame": "frame_0004.png",
-    "start": 1.61,
-    "end": 2.15
+    "start": 1.04,
+    "end": 1.26
   },
   {
     "frame": "frame_0005.png",
-    "start": 2.15,
-    "end": 2.68
+    "start": 1.26,
+    "end": 2.14
   },
   {
     "frame": "frame_0006.png",
-    "start": 2.68,
-    "end": 3.22
+    "start": 2.14,
+    "end": 2.4
   },
   {
     "frame": "frame_0007.png",
-    "start": 3.22,
-    "end": 3.76
+    "start": 2.4,
+    "end": 2.74
   },
   {
     "frame": "frame_0008.png",
-    "start": 3.76,
-    "end": 4.29
+    "start": 2.74,
+    "end": 3.06
   },
   {
     "frame": "frame_0009.png",
-    "start": 4.29,
-    "end": 4.83
+    "start": 3.06,
+    "end": 3.52
   },
   {
     "frame": "frame_0010.png",
-    "start": 4.83,
-    "end": 5.37
+    "start": 3.52,
+    "end": 3.78
   },
   {
     "frame": "frame_0011.png",
-    "start": 5.37,
-    "end": 5.9
+    "start": 3.78,
+    "end": 3.96
   },
   {
     "frame": "frame_0012.png",
-    "start": 5.9,
-    "end": 6.44
+    "start": 3.96,
+    "end": 4.12
   },
   {
     "frame": "frame_0013.png",
-    "start": 6.44,
-    "end": 6.98
+    "start": 4.12,
+    "end": 4.42
   },
   {
     "frame": "frame_0014.png",
-    "start": 6.98,
-    "end": 7.51
+    "start": 4.42,
+    "end": 4.88
   },
   {
     "frame": "frame_0015.png",
-    "start": 7.51,
-    "end": 8.05
+    "start": 4.88,
+    "end": 5.3
   },
   {
     "frame": "frame_0016.png",
-    "start": 8.05,
-    "end": 8.59
+    "start": 5.3,
+    "end": 5.72
   },
   {
     "frame": "frame_0017.png",
-    "start": 8.59,
-    "end": 9.12
+    "start": 5.72,
+    "end": 5.98
   },
   {
     "frame": "frame_0018.png",
-    "start": 9.12,
-    "end": 9.66
+    "start": 5.98,
+    "end": 6.72
   },
   {
     "frame": "frame_0019.png",
-    "start": 9.66,
-    "end": 10.2
+    "start": 6.72,
+    "end": 7.22
   },
   {
     "frame": "frame_0020.png",
-    "start": 10.2,
-    "end": 10.73
+    "start": 7.22,
+    "end": 8.3
   },
   {
     "frame": "frame_0021.png",
-    "start": 10.73,
-    "end": 11.27
+    "start": 8.3,
+    "end": 8.44
   },
   {
     "frame": "frame_0022.png",
-    "start": 11.27,
-    "end": 11.81
+    "start": 8.44,
+    "end": 8.92
   },
   {
     "frame": "frame_0023.png",
-    "start": 11.81,
-    "end": 12.34
+    "start": 8.92,
+    "end": 9.9
   },
   {
     "frame": "frame_0024.png",
-    "start": 12.34,
-    "end": 12.88
+    "start": 9.9,
+    "end": 10.06
   },
   {
     "frame": "frame_0025.png",
-    "start": 12.88,
-    "end": 13.42
+    "start": 10.06,
+    "end": 10.38
   },
   {
     "frame": "frame_0026.png",
-    "start": 13.42,
-    "end": 13.95
+    "start": 10.38,
+    "end": 10.88
   },
   {
     "frame": "frame_0027.png",
-    "start": 13.95,
-    "end": 14.49
+    "start": 10.88,
+    "end": 11.46
   },
   {
     "frame": "frame_0028.png",
-    "start": 14.49,
-    "end": 15.03
+    "start": 11.46,
+    "end": 11.86
   },
   {
     "frame": "frame_0029.png",
-    "start": 15.03,
-    "end": 15.56
+    "start": 11.86,
+    "end": 12.58
   },
   {
     "frame": "frame_0030.png",
-    "start": 15.56,
-    "end": 16.1
+    "start": 12.58,
+    "end": 12.84
   },
   {
     "frame": "frame_0031.png",
-    "start": 16.1,
-    "end": 16.64
+    "start": 12.84,
+    "end": 12.96
   },
   {
     "frame": "frame_0032.png",
-    "start": 16.64,
-    "end": 17.17
+    "start": 12.96,
+    "end": 13.7
   },
   {
     "frame": "frame_0033.png",
-    "start": 17.17,
-    "end": 17.71
+    "start": 13.7,
+    "end": 14.34
   },
   {
     "frame": "frame_0034.png",
-    "start": 17.71,
-    "end": 18.25
+    "start": 14.34,
+    "end": 14.56
   },
   {
     "frame": "frame_0035.png",
-    "start": 18.25,
-    "end": 18.78
+    "start": 14.56,
+    "end": 15.2
   },
   {
     "frame": "frame_0036.png",
-    "start": 18.78,
-    "end": 19.32
+    "start": 15.2,
+    "end": 15.54
   },
   {
     "frame": "frame_0037.png",
-    "start": 19.32,
-    "end": 19.86
+    "start": 15.54,
+    "end": 16.04
   },
   {
     "frame": "frame_0038.png",
-    "start": 19.86,
-    "end": 20.39
+    "start": 16.04,
+    "end": 16.48
   },
   {
     "frame": "frame_0039.png",
-    "start": 20.39,
-    "end": 20.93
+    "start": 16.48,
+    "end": 17.1
   },
   {
     "frame": "frame_0040.png",
-    "start": 20.93,
-    "end": 21.47
+    "start": 17.1,
+    "end": 17.52
   },
   {
     "frame": "frame_0041.png",
-    "start": 21.47,
-    "end": 22
+    "start": 17.52,
+    "end": 18.08
   },
   {
     "frame": "frame_0042.png",
-    "start": 22,
-    "end": 22.54
+    "start": 18.08,
+    "end": 18.58
   },
   {
     "frame": "frame_0043.png",
-    "start": 22.54,
-    "end": 23.08
+    "start": 18.58,
+    "end": 19.06
   },
   {
     "frame": "frame_0044.png",
-    "start": 23.08,
-    "end": 23.61
+    "start": 19.06,
+    "end": 19.24
   },
   {
     "frame": "frame_0045.png",
-    "start": 23.61,
-    "end": 24.15
+    "start": 19.24,
+    "end": 19.58
   },
   {
     "frame": "frame_0046.png",
-    "start": 24.15,
-    "end": 24.69
+    "start": 19.58,
+    "end": 19.94
   },
   {
     "frame": "frame_0047.png",
-    "start": 24.69,
-    "end": 25.22
+    "start": 19.94,
+    "end": 20.22
   },
   {
     "frame": "frame_0048.png",
-    "start": 25.22,
-    "end": 25.76
+    "start": 20.22,
+    "end": 20.9
   },
   {
     "frame": "frame_0049.png",
-    "start": 25.76,
-    "end": 29.98
+    "start": 20.9,
+    "end": 21.59
   },
   {
     "frame": "frame_0050.png",
-    "start": 29.98,
-    "end": 30.13
+    "start": 21.59,
+    "end": 22.27
   },
   {
     "frame": "frame_0051.png",
-    "start": 30.13,
-    "end": 30.28
+    "start": 22.27,
+    "end": 22.95
   },
   {
     "frame": "frame_0052.png",
-    "start": 30.28,
-    "end": 30.43
+    "start": 22.95,
+    "end": 23.64
   },
   {
     "frame": "frame_0053.png",
-    "start": 30.43,
-    "end": 30.58
+    "start": 23.64,
+    "end": 24.32
   },
   {
     "frame": "frame_0054.png",
-    "start": 30.58,
-    "end": 30.73
+    "start": 24.32,
+    "end": 25
   },
   {
     "frame": "frame_0055.png",
-    "start": 30.73,
-    "end": 30.88
+    "start": 25,
+    "end": 25.68
   },
   {
     "frame": "frame_0056.png",
-    "start": 30.88,
-    "end": 31.03
+    "start": 25.68,
+    "end": 26.37
   },
   {
     "frame": "frame_0057.png",
-    "start": 31.03,
-    "end": 31.18
+    "start": 26.37,
+    "end": 27.05
   },
   {
     "frame": "frame_0058.png",
-    "start": 31.18,
-    "end": 31.33
+    "start": 27.05,
+    "end": 27.73
   },
   {
     "frame": "frame_0059.png",
-    "start": 31.33,
-    "end": 31.48
+    "start": 27.73,
+    "end": 28.42
   },
   {
     "frame": "frame_0060.png",
-    "start": 31.48,
-    "end": 31.63
+    "start": 28.42,
+    "end": 29.1
   },
   {
     "frame": "frame_0061.png",
-    "start": 31.63,
-    "end": 31.78
+    "start": 29.1,
+    "end": 29.78
   },
   {
     "frame": "frame_0062.png",
-    "start": 31.78,
-    "end": 31.93
+    "start": 29.78,
+    "end": 30.47
   },
   {
     "frame": "frame_0063.png",
-    "start": 31.93,
-    "end": 32.08
+    "start": 30.47,
+    "end": 31.15
   },
   {
     "frame": "frame_0064.png",
-    "start": 32.08,
-    "end": 32.23
+    "start": 31.15,
+    "end": 31.83
   },
   {
     "frame": "frame_0065.png",
-    "start": 32.23,
-    "end": 32.38
+    "start": 31.83,
+    "end": 32.52
   },
   {
     "frame": "frame_0066.png",
-    "start": 32.38,
-    "end": 32.53
+    "start": 32.52,
+    "end": 33.2
   },
   {
     "frame": "frame_0067.png",
-    "start": 32.53,
-    "end": 32.68
-  },
-  {
-    "frame": "frame_0068.png",
-    "start": 32.68,
-    "end": 32.83
-  },
-  {
-    "frame": "frame_0069.png",
-    "start": 32.83,
-    "end": 32.98
-  },
-  {
-    "frame": "frame_0070.png",
-    "start": 32.98,
-    "end": 33.13
-  },
-  {
-    "frame": "frame_0071.png",
-    "start": 33.13,
-    "end": 33.28
-  },
-  {
-    "frame": "frame_0072.png",
-    "start": 33.28,
-    "end": 33.43
-  },
-  {
-    "frame": "frame_0073.png",
-    "start": 33.43,
-    "end": 33.58
-  },
-  {
-    "frame": "frame_0074.png",
-    "start": 33.58,
-    "end": 33.73
-  },
-  {
-    "frame": "frame_0075.png",
-    "start": 33.73,
+    "start": 33.2,
     "end": 33.88
   },
   {
-    "frame": "frame_0076.png",
+    "frame": "frame_0068.png",
     "start": 33.88,
-    "end": 33.93
+    "end": 34.57
+  },
+  {
+    "frame": "frame_0069.png",
+    "start": 34.57,
+    "end": 35.25
+  },
+  {
+    "frame": "frame_0070.png",
+    "start": 35.25,
+    "end": 35.93
+  },
+  {
+    "frame": "frame_0071.png",
+    "start": 35.93,
+    "end": 36.61
+  },
+  {
+    "frame": "frame_0072.png",
+    "start": 36.61,
+    "end": 37.3
+  },
+  {
+    "frame": "frame_0073.png",
+    "start": 37.3,
+    "end": 37.98
+  },
+  {
+    "frame": "frame_0074.png",
+    "start": 37.98,
+    "end": 38.66
+  },
+  {
+    "frame": "frame_0075.png",
+    "start": 38.66,
+    "end": 39.35
+  },
+  {
+    "frame": "frame_0076.png",
+    "start": 39.35,
+    "end": 40.03
   },
   {
     "frame": "frame_0077.png",
-    "start": 33.93,
-    "end": 33.98
+    "start": 40.03,
+    "end": 40.71
   },
   {
     "frame": "frame_0078.png",
-    "start": 33.98,
-    "end": 34.03
+    "start": 40.71,
+    "end": 41.4
   },
   {
     "frame": "frame_0079.png",
-    "start": 34.03,
-    "end": 34.08
+    "start": 41.4,
+    "end": 42.08
   },
   {
     "frame": "frame_0080.png",
-    "start": 34.08,
-    "end": 34.13
+    "start": 42.08,
+    "end": 49.62
   },
   {
     "frame": "frame_0081.png",
-    "start": 34.13,
-    "end": 34.18
+    "start": 49.62,
+    "end": 49.67
   },
   {
     "frame": "frame_0082.png",
-    "start": 34.18,
-    "end": 34.32
+    "start": 49.67,
+    "end": 49.72
   },
   {
     "frame": "frame_0083.png",
-    "start": 34.32,
-    "end": 34.54
+    "start": 49.72,
+    "end": 49.81
   },
   {
     "frame": "frame_0084.png",
-    "start": 34.54,
-    "end": 34.94
+    "start": 49.81,
+    "end": 49.96
   },
   {
     "frame": "frame_0085.png",
-    "start": 34.94,
-    "end": 35.9
+    "start": 49.96,
+    "end": 50.11
   },
   {
     "frame": "frame_0086.png",
-    "start": 35.9,
-    "end": 36.16
+    "start": 50.11,
+    "end": 50.26
   },
   {
     "frame": "frame_0087.png",
-    "start": 36.16,
-    "end": 36.26
+    "start": 50.26,
+    "end": 50.41
   },
   {
     "frame": "frame_0088.png",
-    "start": 36.26,
-    "end": 36.78
+    "start": 50.41,
+    "end": 50.56
   },
   {
     "frame": "frame_0089.png",
-    "start": 36.78,
-    "end": 38.02
+    "start": 50.56,
+    "end": 50.71
   },
   {
     "frame": "frame_0090.png",
-    "start": 38.02,
-    "end": 38.26
+    "start": 50.71,
+    "end": 50.86
   },
   {
     "frame": "frame_0091.png",
-    "start": 38.26,
-    "end": 38.4
+    "start": 50.86,
+    "end": 51.01
   },
   {
     "frame": "frame_0092.png",
-    "start": 38.4,
-    "end": 38.74
+    "start": 51.01,
+    "end": 51.16
   },
   {
     "frame": "frame_0093.png",
-    "start": 38.74,
-    "end": 39.66
+    "start": 51.16,
+    "end": 51.31
   },
   {
     "frame": "frame_0094.png",
-    "start": 39.66,
-    "end": 40
+    "start": 51.31,
+    "end": 51.46
   },
   {
     "frame": "frame_0095.png",
-    "start": 40,
-    "end": 40.42
+    "start": 51.46,
+    "end": 51.61
   },
   {
     "frame": "frame_0096.png",
-    "start": 40.42,
-    "end": 41.32
+    "start": 51.61,
+    "end": 51.76
   },
   {
     "frame": "frame_0097.png",
-    "start": 41.32,
-    "end": 41.66
+    "start": 51.76,
+    "end": 51.81
   },
   {
     "frame": "frame_0098.png",
-    "start": 41.66,
+    "start": 42.26,
     "end": 42.27
   }
 ]
