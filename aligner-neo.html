@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Frame Aligner</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #f7f5f0;
+            --panel-bg: var(--bg-color);
+            --text-primary: #121212;
+            --text-muted: #736e65;
+            --border-color: rgba(18, 18, 18, 0.12);
+            --font-editorial: 'Instrument Serif', serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #0d0d0d;
+                --panel-bg: var(--bg-color);
+                --text-primary: #f0eee9;
+                --text-muted: #8c877e;
+                --border-color: rgba(240, 238, 233, 0.15);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-mono);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 24px;
+            -webkit-font-smoothing: antialiased;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        header {
+            width: 100%;
+            max-width: 720px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            margin-bottom: 40px;
+        }
+
+        .logo-link {
+            font-family: var(--font-mono);
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 720px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.72rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .input-flex {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        textarea {
+            width: 100%;
+            font-size: 0.95rem;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            outline: none;
+            background: transparent;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        textarea:focus {
+            border-color: var(--text-primary);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 180px;
+            line-height: 1.4;
+        }
+
+        input[type="file"] {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding: 10px 0;
+        }
+
+        input[type="file"]::file-selector-button {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            border-radius: 2px;
+            margin-right: 12px;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background: var(--text-primary);
+            color: var(--bg-color);
+        }
+
+        .btn-action {
+            background: var(--text-primary);
+            color: var(--bg-color);
+            border: none;
+            padding: 12px 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 0.75rem;
+            font-weight: 500;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            border-radius: 2px;
+            transition: opacity 0.2s;
+        }
+
+        .btn-action:hover {
+            opacity: 0.88;
+        }
+
+        .btn-action:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-slice {
+            background: var(--text-primary);
+            color: var(--bg-color);
+            border: none;
+            padding: 6px 12px;
+            font-size: 0.7rem;
+            font-family: var(--font-mono);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        .btn-slice:hover {
+            opacity: 0.85;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        .btn-secondary:hover {
+            background: var(--text-primary);
+            color: var(--bg-color);
+        }
+
+        #statusText {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        #statusText.warn {
+            color: #b3541e;
+        }
+
+        pre {
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            color: var(--text-primary);
+            max-height: 350px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            pre {
+                background: rgba(255, 255, 255, 0.03);
+            }
+            #statusText.warn {
+                color: #e0985a;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <header role="banner">
+        <a href="https://callistra.design" class="logo-link">Callistra.design — Audio Frame Aligner</a>
+    </header>
+
+    <main class="container">
+        
+        <!-- API Key -->
+        <div class="control-row">
+            <span class="control-header">Groq API Key</span>
+            <div class="input-flex">
+                <input type="password" id="apiKey" placeholder="gsk_...">
+                <button onclick="saveApiKey()" class="btn-action">Save Key</button>
+            </div>
+        </div>
+
+        <!-- Audio File -->
+        <div class="control-row">
+            <span class="control-header">Voiceover Audio</span>
+            <input type="file" id="audioFile" accept="audio/*">
+        </div>
+
+        <!-- Script Area -->
+        <div class="control-row">
+            <div class="control-header">
+                <span>Script Text (one word per line — click "Slice Txt" to auto-format)</span>
+                <button class="btn-slice" onclick="sliceText()">Slice Txt</button>
+            </div>
+            <textarea id="textInput" placeholder="Paste script, then click Slice Txt to split into one word per line..."></textarea>
+        </div>
+
+        <!-- Submit & Status -->
+        <div class="control-row">
+            <button onclick="processData()" id="processBtn" class="btn-action" style="width: 100%;">
+                Align Audio
+            </button>
+            <p id="statusText"></p>
+        </div>
+
+        <!-- JSON Output Section -->
+        <div class="control-row hidden" id="outputSection">
+            <div class="control-header">
+                <span>Aligned JSON</span>
+                <div class="btn-group">
+                    <button id="copyBtn" onclick="copyJSON()" class="btn-secondary">Copy JSON</button>
+                    <button onclick="downloadJSON()" class="btn-secondary">Download JSON</button>
+                </div>
+            </div>
+            <pre id="jsonOutput"></pre>
+        </div>
+
+    </main>
+
+    <script>
+        // --- Initialization ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedKey = localStorage.getItem('groqApiKey');
+            if (savedKey) {
+                document.getElementById('apiKey').value = savedKey;
+            }
+        });
+
+        function saveApiKey() {
+            const key = document.getElementById('apiKey').value.trim();
+            if (key) {
+                localStorage.setItem('groqApiKey', key);
+                setStatus("API key saved");
+            } else {
+                setStatus("Please enter a key");
+            }
+        }
+
+        function setStatus(msg, isWarning) {
+            const statusEl = document.getElementById('statusText');
+            statusEl.innerText = msg;
+            statusEl.classList.toggle('warn', !!isWarning);
+        }
+
+        // --- Fast Audio Duration Reader (Header Metadata Only) ---
+        function getAudioDuration(file) {
+            return new Promise((resolve) => {
+                const audio = document.createElement('audio');
+                const url = URL.createObjectURL(file);
+                audio.preload = 'metadata';
+                audio.onloadedmetadata = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(audio.duration);
+                };
+                audio.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(null);
+                };
+                audio.src = url;
+            });
+        }
+
+        // --- Slice Text Button ---
+        // Splits on ANY run of whitespace/newlines so a pasted paragraph
+        // (or a script that's already multi-word-per-line) always ends up
+        // as exactly one token per line before alignment runs.
+        function sliceText() {
+            const textarea = document.getElementById('textInput');
+            const words = textarea.value.trim().split(/\s+/).filter(w => w.length > 0);
+            if (words.length > 0) {
+                textarea.value = words.join('\n');
+            }
+        }
+
+        // --- Levenshtein Distance (character-level, used on single tokens) ---
+        function levenshtein(a, b) {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            let matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        // --- Processing Logic ---
+        async function processData() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const audioFile = document.getElementById('audioFile').files[0];
+            const scriptText = document.getElementById('textInput').value.trim();
+            const btn = document.getElementById('processBtn');
+
+            if (!apiKey) return setStatus("Missing API Key", true);
+            if (!audioFile) return setStatus("Missing audio file", true);
+            if (!scriptText) return setStatus("Missing script text", true);
+
+            btn.disabled = true;
+            document.getElementById('outputSection').classList.add('hidden');
+            
+            try {
+                setStatus("Aligning script via Whisper...");
+                
+                const audioDurationPromise = getAudioDuration(audioFile);
+
+                // Whisper's `prompt` field is a style/vocabulary hint, not a
+                // forced transcript — it nudges spelling/formatting, it does
+                // not guarantee word-for-word output. Keep the hint honest
+                // and give it the full script rather than a misleading
+                // 500-char truncation that claims to be "exact."
+                const cleanScript = scriptText.replace(/\n/g, ' ');
+                const explicitPrompt = cleanScript.substring(0, 900);
+
+                const url = 'https://api.groq.com/openai/v1/audio/transcriptions';
+                const formData = new FormData();
+                formData.append('file', audioFile);
+                formData.append('model', 'whisper-large-v3');
+                formData.append('response_format', 'verbose_json'); 
+                formData.append('timestamp_granularities[]', 'word');
+                formData.append('language', 'en'); 
+                formData.append('prompt', explicitPrompt); 
+                formData.append('temperature', '0'); 
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errBody = await response.text();
+                    throw new Error(`API Error ${response.status}: ${errBody}`);
+                }
+
+                const data = await response.json();
+                const wordsArr = data.words || [];
+                if (wordsArr.length === 0) {
+                    throw new Error("No words recognized.");
+                }
+
+                setStatus("Enforcing frame timings...");
+                
+                const audioDuration = await audioDurationPromise;
+                const frameData = alignScriptToAudio(scriptText, wordsArr, audioDuration);
+
+                const jsonString = JSON.stringify(frameData, null, 2);
+                document.getElementById('jsonOutput').textContent = jsonString;
+                document.getElementById('outputSection').classList.remove('hidden');
+                
+                if (!audioDuration) {
+                    setStatus("Alignment complete — audio duration unreadable, last frame not snapped to true end.", true);
+                } else {
+                    setStatus("Alignment complete.");
+                }
+                
+            } catch (error) {
+                console.error(error);
+                setStatus(`Error: ${error.message}`, true);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // --- Normalization helper ---
+        // Strips punctuation and lowercases. Guards against producing an
+        // empty string (e.g. a script line that was just "-" or "..."),
+        // which previously made the substring-match shortcut fire on
+        // every API word ("".includes(x) is always true).
+        function normalizeToken(raw) {
+            const cleaned = raw.toLowerCase().replace(/[^\w\s]/g, '').trim();
+            return cleaned;
+        }
+
+        // --- Alignment Algorithm ---
+        // Aligns the script (expected one word per line, but tolerant of
+        // stray multi-word lines by splitting them) against Whisper's
+        // word-level timestamps using a Needleman-Wunsch style DP over
+        // individual word tokens.
+        function alignScriptToAudio(script, apiWords, audioDuration) {
+            // Build script tokens, but remember which output "frame" (i.e.
+            // original line) each token belongs to, so multi-word lines
+            // still map back to a single frame entry.
+            const scriptLines = script.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            const tokenFrameIndex = []; // token index -> frame index
+            const sWordsRaw = [];
+            scriptLines.forEach((line, frameIdx) => {
+                const lineTokens = line.split(/\s+/).filter(t => t.length > 0);
+                lineTokens.forEach(t => {
+                    sWordsRaw.push(t);
+                    tokenFrameIndex.push(frameIdx);
+                });
+            });
+
+            const sWords = sWordsRaw.map(normalizeToken);
+            const aWords = apiWords.map(w => normalizeToken(w.word));
+
+            const N = sWords.length;
+            const M = aWords.length;
+            const numFrames = scriptLines.length;
+
+            if (N === 0) {
+                return [];
+            }
+
+            // Cost model:
+            //  - exact match: 0
+            //  - close match (small edit distance relative to token length): small cost
+            //  - skip (script word with no audio word, or vice versa): fixed gap cost
+            // A "close match" must never be cheaper than skipping, otherwise
+            // the aligner has no incentive to prefer a real skip over a bad
+            // pairing, which is what caused drift on any Whisper misheard word.
+            const GAP = 3;
+
+            function pairCost(sTok, aTok) {
+                if (sTok.length === 0 || aTok.length === 0) {
+                    // Only occurs for degenerate empty tokens; never treat
+                    // as a free/cheap match.
+                    return GAP + 1;
+                }
+                if (sTok === aTok) return 0;
+                const dist = levenshtein(sTok, aTok);
+                const longer = Math.max(sTok.length, aTok.length);
+                const normalized = dist / longer; // 0 = identical, 1 = totally different
+                if (normalized <= 0.34) {
+                    // allow small typos/ASR errors to still count as a match,
+                    // but always slightly worse than a perfect match and
+                    // always cheaper than GAP so it's still preferred over
+                    // skipping when genuinely close.
+                    return 1 + normalized; // range (1, 1.34]
+                }
+                // Not a plausible match: make it cost more than a plain
+                // skip so the DP prefers skipping over forcing a bad pair.
+                return GAP + 1;
+            }
+
+            const dp = Array.from({ length: N + 1 }, () => new Array(M + 1).fill(0));
+            const ptr = Array.from({ length: N + 1 }, () => new Array(M + 1).fill(0));
+
+            for (let i = 1; i <= N; i++) { dp[i][0] = i * GAP; ptr[i][0] = 1; } // skip script word
+            for (let j = 1; j <= M; j++) { dp[0][j] = j * GAP; ptr[0][j] = 2; } // skip audio word
+
+            for (let i = 1; i <= N; i++) {
+                for (let j = 1; j <= M; j++) {
+                    const cost = pairCost(sWords[i - 1], aWords[j - 1]);
+                    const matchCost = dp[i - 1][j - 1] + cost;
+                    const deleteCost = dp[i - 1][j] + GAP; // script word unmatched
+                    const insertCost = dp[i][j - 1] + GAP; // audio word unmatched
+
+                    if (matchCost <= deleteCost && matchCost <= insertCost) {
+                        dp[i][j] = matchCost; ptr[i][j] = 0;
+                    } else if (deleteCost <= insertCost) {
+                        dp[i][j] = deleteCost; ptr[i][j] = 1;
+                    } else {
+                        dp[i][j] = insertCost; ptr[i][j] = 2;
+                    }
+                }
+            }
+
+            let i = N, j = M;
+            const matches = new Array(N).fill(null); // token index -> api word index
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && ptr[i][j] === 0) {
+                    matches[i - 1] = j - 1;
+                    i--; j--;
+                } else if (i > 0 && ptr[i][j] === 1) {
+                    i--;
+                } else {
+                    j--;
+                }
+            }
+
+            // Collapse token-level matches into frame-level (one per script
+            // line) start/end times: a frame's start is its first matched
+            // token's start, its end is its last matched token's end.
+            const frameStart = new Array(numFrames).fill(null);
+            const frameEnd = new Array(numFrames).fill(null);
+            const frameMatched = new Array(numFrames).fill(false);
+
+            for (let idx = 0; idx < N; idx++) {
+                const apiIdx = matches[idx];
+                if (apiIdx === null || !apiWords[apiIdx]) continue;
+                const fIdx = tokenFrameIndex[idx];
+                const wStart = apiWords[apiIdx].start;
+                const wEnd = apiWords[apiIdx].end;
+                if (frameStart[fIdx] === null || wStart < frameStart[fIdx]) {
+                    frameStart[fIdx] = wStart;
+                }
+                if (frameEnd[fIdx] === null || wEnd > frameEnd[fIdx]) {
+                    frameEnd[fIdx] = wEnd;
+                }
+                frameMatched[fIdx] = true;
+            }
+
+            const frames = [];
+            for (let idx = 0; idx < numFrames; idx++) {
+                const frameNumber = String(idx + 1).padStart(4, '0');
+                frames.push({
+                    frame: `frame_${frameNumber}.png`,
+                    start: frameStart[idx],
+                    end: frameEnd[idx],
+                    isMatched: frameMatched[idx]
+                });
+            }
+
+            const totalAudioTime = audioDuration
+                || (apiWords.length > 0 ? apiWords[apiWords.length - 1].end + 0.5 : (numFrames * 0.5));
+
+            // Enforce monotonic non-decreasing matched anchors first,
+            // fixing any case where the DP produced an out-of-order match
+            // (can happen with repeated words in the script).
+            let lastMatchedEnd = 0.0;
+            for (let idx = 0; idx < numFrames; idx++) {
+                if (frames[idx].isMatched) {
+                    if (frames[idx].start < lastMatchedEnd) {
+                        frames[idx].start = lastMatchedEnd + 0.01;
+                    }
+                    if (frames[idx].end <= frames[idx].start) {
+                        frames[idx].end = frames[idx].start + 0.1;
+                    }
+                    lastMatchedEnd = frames[idx].end;
+                }
+            }
+
+            // Interpolate unmatched runs between matched anchors (or
+            // between the start/end of audio and the nearest anchor).
+            let prevAnchorIdx = -1;
+            for (let idx = 0; idx <= numFrames; idx++) {
+                if (idx === numFrames || frames[idx].isMatched) {
+                    const nextAnchorIdx = idx;
+                    const gapCount = nextAnchorIdx - prevAnchorIdx - 1;
+
+                    if (gapCount > 0) {
+                        const startTime = (prevAnchorIdx >= 0) ? frames[prevAnchorIdx].end : 0.0;
+                        let endTime = (nextAnchorIdx < numFrames) ? frames[nextAnchorIdx].start : Math.max(startTime + (gapCount * 0.3), totalAudioTime);
+
+                        if (endTime <= startTime) endTime = startTime + (gapCount * 0.15);
+
+                        const timePerWord = (endTime - startTime) / gapCount;
+
+                        for (let k = 1; k <= gapCount; k++) {
+                            const unmatchIdx = prevAnchorIdx + k;
+                            frames[unmatchIdx].start = startTime + (timePerWord * (k - 1));
+                            frames[unmatchIdx].end = frames[unmatchIdx].start + timePerWord;
+                        }
+                    }
+                    prevAnchorIdx = nextAnchorIdx;
+                }
+            }
+
+            // Single, coherent left-to-right pass that guarantees strictly
+            // non-decreasing, non-overlapping frames and merges tiny gaps.
+            // (Previously this logic peeked at frames[idx+1] while the
+            // earlier interpolation pass was still writing to those same
+            // indices in a way that could leave non-monotonic results for
+            // consecutive unmatched runs; doing it as its own clean final
+            // pass over the fully-interpolated array fixes that.)
+            let currentMinTime = 0.0;
+            const minDuration = 0.05;
+
+            for (let idx = 0; idx < numFrames; idx++) {
+                if (frames[idx].start === null) frames[idx].start = currentMinTime;
+                if (frames[idx].end === null) frames[idx].end = frames[idx].start + minDuration;
+
+                if (frames[idx].start < currentMinTime) {
+                    frames[idx].start = currentMinTime;
+                }
+                if (frames[idx].end < frames[idx].start + minDuration) {
+                    frames[idx].end = frames[idx].start + minDuration;
+                }
+
+                currentMinTime = frames[idx].end;
+            }
+
+            // Second lightweight pass: merge tiny (<=150ms) gaps between
+            // consecutive frames so there's no dead air between words,
+            // without re-reading indices that a prior loop iteration
+            // already mutated in this same pass.
+            for (let idx = 0; idx < numFrames - 1; idx++) {
+                const nextStart = frames[idx + 1].start;
+                const microGap = nextStart - frames[idx].end;
+                if (microGap > 0 && microGap <= 0.15) {
+                    frames[idx].end = nextStart;
+                }
+            }
+
+            // Strictly set the last frame's end time to the full audio duration
+            if (frames.length > 0 && audioDuration) {
+                const finalEnd = Number(audioDuration.toFixed(2));
+                frames[frames.length - 1].end = finalEnd;
+                if (frames[frames.length - 1].start >= finalEnd) {
+                    frames[frames.length - 1].start = Number((finalEnd - 0.01).toFixed(2));
+                }
+            }
+
+            return frames.map(f => {
+                return {
+                    frame: f.frame,
+                    start: Number(f.start.toFixed(2)),
+                    end: Number(f.end.toFixed(2))
+                };
+            });
+        }
+
+        // --- Actions: Copy & Download ---
+        async function copyJSON() {
+            const jsonText = document.getElementById('jsonOutput').textContent;
+            if (!jsonText) return;
+            try {
+                await navigator.clipboard.writeText(jsonText);
+                const btn = document.getElementById('copyBtn');
+                btn.innerText = "Copied";
+                setTimeout(() => btn.innerText = "Copy JSON", 2000);
+            } catch (err) {
+                console.error("Copy failed", err);
+            }
+        }
+
+        function downloadJSON() {
+            const jsonText = document.getElementById('jsonOutput').textContent;
+            if (!jsonText) return;
+            
+            const blob = new Blob([jsonText], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "frame_timestamps.json";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
